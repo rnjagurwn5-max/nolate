@@ -371,17 +371,6 @@ body.cv #app{height:100%}
 </head>
 <body>
 <div id="app"></div>
-<audio id="bgm" src="audio/morning-invasion.mp3" autoplay loop preload="auto"></audio>
-<script>
-(function(){
-  const bgm=document.getElementById('bgm');
-  bgm.volume=0.5;
-  // 브라우저가 소리 있는 자동재생을 막으면, 첫 클릭/키 입력/터치 때 재생
-  const kick=()=>{ bgm.play().then(()=>{ ['pointerdown','keydown','touchstart'].forEach(e=>document.removeEventListener(e,kick,true)); }).catch(()=>{}); };
-  ['pointerdown','keydown','touchstart'].forEach(e=>document.addEventListener(e,kick,true));
-  kick();
-})();
-</script>
 
 <script>
 (function(){
@@ -406,6 +395,8 @@ const ITEMS={
   '오토바이 열쇠':{d:'군인이 빌려준 오토바이'},
   '군사 우회로 정보':{d:'삼성역까지 군 전용 우회로'}
 };
+const BGM=new Audio('audio/morning-invasion.mp3'); BGM.loop=true; BGM.volume=0.5;
+const playBgm=()=>{ try{ BGM.currentTime=0; BGM.play().catch(()=>{}); }catch(e){} };
 const fmt=t=>String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const has=(s,i)=>s.items.includes(i);
@@ -1020,7 +1011,7 @@ function moveFocus(d){
 }
 app.addEventListener('click',e=>{
   const b=e.target.closest('button,[data-adv]'); if(!b||b.disabled) return;
-  if(b.hasAttribute('data-start')){S=fresh();HIST=[];goTo('sc01');return;}
+  if(b.hasAttribute('data-start')){playBgm();S=fresh();HIST=[];goTo('sc01');return;}
   if(b.hasAttribute('data-help')){S.showHelp=!S.showHelp;render(false);return;}
   if(b.hasAttribute('data-back')){goBack();return;}
   if(b.hasAttribute('data-restart')){S=fresh();HIST=[];render(true);return;}
