@@ -174,6 +174,9 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
   .ln-say{grid-template-columns:1fr;gap:2px}
   .who{justify-self:start}
 }
+.bgm-btn{position:fixed;z-index:30;top:calc(10px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);border:2px solid var(--gold);background:linear-gradient(180deg,#2a3a63,#141f3d);color:#fff;border-radius:999px;padding:4px 14px;font-size:12.5px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.bgm-btn.off{border-color:var(--bar-edge);opacity:.75}
+.bgm-btn:hover{filter:brightness(1.15)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 /* additions for storyboard build */
@@ -395,6 +398,15 @@ const ITEMS={
   '오토바이 열쇠':{d:'군인이 빌려준 오토바이'},
   '군사 우회로 정보':{d:'삼성역까지 군 전용 우회로'}
 };
+const BGM=new Audio('audio/morning-invasion.mp3'); BGM.loop=true; BGM.volume=0.5; BGM.preload='auto';
+let bgmOn=true; try{ bgmOn=localStorage.getItem('nolate-bgm')!=='off'; }catch(e){}
+const bgmBtn=document.createElement('button');
+bgmBtn.className='bgm-btn'; bgmBtn.type='button';
+const syncBgmBtn=()=>{ const on=bgmOn&&!BGM.paused; bgmBtn.textContent=on?'♪ BGM ON':'♪ BGM OFF'; bgmBtn.classList.toggle('off',!on); bgmBtn.setAttribute('aria-pressed',on); };
+const playBgm=()=>{ if(!bgmOn) return; try{ BGM.play().then(syncBgmBtn,syncBgmBtn); }catch(e){} };
+bgmBtn.addEventListener('click',e=>{ e.stopPropagation(); bgmOn=BGM.paused||!bgmOn; try{ localStorage.setItem('nolate-bgm',bgmOn?'on':'off'); }catch(e){} if(bgmOn) playBgm(); else BGM.pause(); syncBgmBtn(); bgmBtn.blur(); });
+BGM.addEventListener('play',syncBgmBtn); BGM.addEventListener('pause',syncBgmBtn);
+document.body.appendChild(bgmBtn); syncBgmBtn();
 const fmt=t=>String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const has=(s,i)=>s.items.includes(i);
@@ -1009,7 +1021,7 @@ function moveFocus(d){
 }
 app.addEventListener('click',e=>{
   const b=e.target.closest('button,[data-adv]'); if(!b||b.disabled) return;
-  if(b.hasAttribute('data-start')){S=fresh();HIST=[];goTo('sc01');return;}
+  if(b.hasAttribute('data-start')){playBgm();S=fresh();HIST=[];goTo('sc01');return;}
   if(b.hasAttribute('data-help')){S.showHelp=!S.showHelp;render(false);return;}
   if(b.hasAttribute('data-back')){goBack();return;}
   if(b.hasAttribute('data-restart')){S=fresh();HIST=[];render(true);return;}
@@ -1032,7 +1044,7 @@ app.addEventListener('mouseover',e=>{
 });
 document.addEventListener('keydown',e=>{
   if(e.metaKey||e.ctrlKey||e.altKey) return;
-  if(S.scene==='title'){ if(e.key==='Escape'&&S.showHelp){S.showHelp=false;render(false);} else if(!S.showHelp&&(e.key==='Enter'||e.key===' ')){e.preventDefault();S=fresh();HIST=[];goTo('sc01');} return; }
+  if(S.scene==='title'){ if(e.key==='Escape'&&S.showHelp){S.showHelp=false;render(false);} else if(!S.showHelp&&(e.key==='Enter'||e.key===' ')){e.preventDefault();playBgm();S=fresh();HIST=[];goTo('sc01');} return; }
   if((S.scene==='DEFEAT'||S.scene==='END')&&e.key==='Backspace'){e.preventDefault();goBack();return;}
   if(!(SC[S.scene]||S.scene==='BATTLE')) return;
   if(e.key==='Backspace'){e.preventDefault();goBack();return;}
