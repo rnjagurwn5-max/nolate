@@ -1,0 +1,1068 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>지각을 해서는 안 돼!</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&family=Share+Tech+Mono&display=swap">
+<style>
+/* Layout: sticky alarm-clock HUD on top, scene (image → text → choices) on the left, inventory/log rail on the right; stacks on phones. Single dark "dawn after the invasion" look by choice. */
+:root{
+  --bg:#0b0e16;
+  --panel:#141927;
+  --panel-2:#1b2234;
+  --line:#2a3350;
+  --ink:#e9ecf4;
+  --muted:#8f98b0;
+  --alarm:#ff4a3d;      /* bedside alarm-clock red */
+  --amber:#ffb627;      /* disaster-alert / caution tape */
+  --hp:#47d97f;
+  --st:#56c2ff;
+  --bat:#f5e06a;
+  --alien:#b77cff;
+  --f-display:"Black Han Sans","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --f-digit:"Share Tech Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.65;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+button{font:inherit;color:inherit}
+button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.wrap{max-width:1120px;margin:0 auto}
+
+/* HUD */
+.hud{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);margin-inline:calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px))}
+.hud-in{max-width:1120px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px}
+.clock{display:flex;align-items:baseline;gap:10px}
+.clock .now{font-family:var(--f-digit);font-size:34px;line-height:1;color:var(--alarm);text-shadow:0 0 14px color-mix(in srgb,var(--alarm) 55%,transparent);letter-spacing:.04em;font-variant-numeric:tabular-nums}
+.clock .left{font-family:var(--f-digit);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.clock .left b{color:var(--ink);font-weight:400;font-size:16px}
+.bars{display:flex;flex-wrap:wrap;gap:8px 18px;flex:1;min-width:0}
+.bar{display:grid;grid-template-columns:auto 110px auto;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.bar .track{height:8px;background:var(--panel-2);border-radius:2px;overflow:hidden;border:1px solid var(--line)}
+.bar .fill{height:100%;transition:width .4s ease}
+.bar .num{font-family:var(--f-digit);color:var(--ink);font-size:13px;min-width:54px;font-variant-numeric:tabular-nums}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:11.5px;letter-spacing:.04em;padding:3px 8px;border-radius:3px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.chip.warn{border-color:var(--amber);color:var(--amber)}
+.chip.hot{border-color:var(--alarm);color:#fff;background:var(--alarm);animation:pulse 1.2s infinite}
+@keyframes pulse{50%{opacity:.6}}
+
+/* Main grid */
+.main{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:24px;margin-top:20px}
+@media (max-width:900px){.main{grid-template-columns:1fr}}
+.scene{min-width:0;display:flex;flex-direction:column;gap:16px}
+.frame{position:relative;border-radius:6px;overflow:hidden;border:1px solid var(--line);background:var(--panel);aspect-ratio:16/9;max-width:100%}
+.frame img{width:100%;height:100%;object-fit:cover;display:block;animation:fade .5s ease}
+@keyframes fade{from{opacity:.3;transform:scale(1.02)}to{opacity:1;transform:none}}
+.frame .cap{position:absolute;left:0;right:0;bottom:0;padding:40px 18px 14px;background:linear-gradient(transparent,rgba(5,7,12,.92))}
+.cap .eyebrow{font-family:var(--f-digit);font-size:12px;letter-spacing:.14em;color:var(--amber);text-transform:uppercase}
+.cap h2{font-family:var(--f-display);font-weight:400;font-size:clamp(22px,4vw,34px);line-height:1.15;margin:2px 0 0;text-wrap:balance;color:#fff;text-shadow:0 2px 10px #000}
+.ticker{font-size:12.5px;color:var(--muted);display:flex;gap:8px;align-items:center}
+.ticker .dot{width:8px;height:8px;border-radius:50%;background:var(--alarm);flex:none;animation:pulse 1s infinite}
+
+.result{border:1px solid var(--line);border-left:3px solid var(--amber);background:var(--panel);padding:12px 16px;border-radius:4px}
+.result .rh{font-size:11.5px;letter-spacing:.12em;color:var(--amber);font-family:var(--f-digit)}
+.result p{margin:4px 0 8px}
+.deltas{display:flex;flex-wrap:wrap;gap:6px}
+.d{font-family:var(--f-digit);font-size:12px;padding:2px 7px;border-radius:3px;background:var(--panel-2);border:1px solid var(--line)}
+.d.neg{color:var(--alarm)} .d.pos{color:var(--hp)} .d.item{color:var(--amber)} .d.ally{color:var(--alien)}
+
+.story{display:flex;flex-direction:column;gap:10px;max-width:68ch}
+.story p{margin:0}
+.ln-say{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:baseline}
+.who{font-size:12px;font-weight:700;padding:1px 8px;border-radius:3px;background:var(--panel-2);border:1px solid var(--line);white-space:nowrap}
+.who.me{color:var(--st);border-color:color-mix(in srgb,var(--st) 40%,var(--line))}
+.who.mom{color:#ff9fb3}
+.who.teacher{color:var(--amber)}
+.who.alien{color:var(--alien)}
+.who.army{color:var(--hp)}
+.ln-sfx{font-family:var(--f-display);font-size:26px;color:var(--amber);letter-spacing:.02em;transform:skew(-6deg);margin:2px 0!important}
+.ln-sys{font-family:var(--f-digit);font-size:13px;color:var(--muted)}
+.alert{border-radius:8px;overflow:hidden;border:1px solid color-mix(in srgb,var(--alarm) 50%,var(--line));max-width:520px}
+.alert .ah{background:var(--alarm);color:#fff;font-weight:700;font-size:13px;padding:6px 12px;letter-spacing:.04em}
+.alert .ab{background:var(--panel-2);padding:10px 12px;font-size:14px}
+.bossbar{border:1px solid color-mix(in srgb,var(--alien) 50%,var(--line));border-radius:4px;padding:10px 12px;background:var(--panel)}
+.bossbar .row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}
+.bossbar .row b{color:var(--alien);font-family:var(--f-display);font-weight:400;font-size:17px}
+.bossbar .track{height:10px;background:var(--panel-2);border-radius:2px;overflow:hidden}
+.bossbar .fill{height:100%;background:var(--alien);transition:width .4s}
+
+.qa{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px}
+.qa h3{font-family:var(--f-display);font-weight:400;font-size:20px;margin:0;color:#fff}
+.hintbtn{border:1px dashed var(--amber);background:transparent;color:var(--amber);padding:6px 12px;border-radius:4px;cursor:pointer;font-size:13px}
+.hintbtn:hover{background:color-mix(in srgb,var(--amber) 12%,transparent)}
+.hint{background:color-mix(in srgb,var(--amber) 9%,var(--panel));border:1px solid color-mix(in srgb,var(--amber) 45%,var(--line));border-radius:4px;padding:10px 14px;font-size:14px}
+.hint b{color:var(--amber);margin-right:6px}
+
+.choices{display:grid;gap:10px}
+.ch{display:grid;grid-template-columns:38px 1fr;gap:12px;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 14px;cursor:pointer;transition:border-color .15s,background .15s,transform .15s}
+.ch:hover:not(:disabled){border-color:var(--amber);background:var(--panel-2);transform:translateX(3px)}
+.ch .k{font-family:var(--f-digit);font-size:22px;color:var(--amber);line-height:1.2}
+.ch .t{font-weight:700;font-size:15.5px;color:#fff}
+.ch .ds{color:var(--muted);font-size:13.5px;margin-top:2px}
+.ch .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.ch .meta span{font-family:var(--f-digit);font-size:11.5px;padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--muted)}
+.ch .meta .tm{color:var(--ink)}
+.ch .meta .req{color:var(--alien);border-color:color-mix(in srgb,var(--alien) 45%,var(--line))}
+.ch.special .t{color:var(--amber)}
+.ch:disabled{cursor:not-allowed;opacity:.42}
+.ch:disabled .meta .req{color:var(--alarm);border-color:var(--alarm)}
+
+/* Rail */
+.rail{display:flex;flex-direction:column;gap:16px;min-width:0}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px}
+.box h4{margin:0 0 10px;font-size:11.5px;letter-spacing:.14em;color:var(--muted);font-weight:500}
+.prof{display:flex;flex-direction:column;gap:4px;font-size:13px}
+.prof .nm{font-family:var(--f-display);font-size:20px;color:#fff}
+.prof .ab{color:var(--muted)}
+.prof .ab b{color:var(--ink);font-weight:500}
+.inv{display:flex;flex-direction:column;gap:6px;list-style:none;margin:0;padding:0}
+.inv li{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13.5px;padding:6px 8px;border-radius:4px;background:var(--panel-2)}
+.inv li small{display:block;color:var(--muted);font-size:11.5px;line-height:1.4}
+.use{border:1px solid var(--hp);color:var(--hp);background:transparent;border-radius:3px;padding:2px 8px;font-size:12px;cursor:pointer;flex:none}
+.use:hover{background:color-mix(in srgb,var(--hp) 14%,transparent)}
+.ally{color:var(--alien)}
+.log{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;max-height:260px;overflow:auto;font-size:12.5px}
+.log li{display:grid;grid-template-columns:44px 1fr;gap:6px;color:var(--muted)}
+.log li span{font-family:var(--f-digit);color:var(--alarm);font-variant-numeric:tabular-nums}
+.empty{color:var(--muted);font-size:13px}
+.restart{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:4px;padding:7px 10px;cursor:pointer;font-size:12.5px;width:100%}
+.restart:hover{border-color:var(--alarm);color:var(--alarm)}
+
+/* Title & ending */
+.title{max-width:980px;margin:24px auto 0;display:flex;flex-direction:column;gap:20px}
+.title .frame{aspect-ratio:auto}
+.title .frame img{height:auto}
+.kicker{font-family:var(--f-digit);color:var(--amber);letter-spacing:.16em;font-size:12.5px}
+.title h1{font-family:var(--f-display);font-weight:400;font-size:clamp(38px,8vw,72px);line-height:1.02;margin:4px 0 6px;color:#fff;text-wrap:balance}
+.title h1 em{font-style:normal;color:var(--alarm)}
+.title .lede{font-size:17px;max-width:60ch;margin:0;color:var(--ink)}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.rule{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 14px;font-size:13.5px;color:var(--muted)}
+.rule b{display:block;color:var(--ink);font-size:14px;margin-bottom:2px}
+.chapters{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;font-size:13px}
+.chapters div{border-top:2px solid var(--line);padding-top:6px;color:var(--muted)}
+.chapters div b{display:block;color:var(--ink);font-family:var(--f-display);font-weight:400;font-size:16px}
+.chapters div span{font-family:var(--f-digit);color:var(--amber);font-size:11px;letter-spacing:.1em}
+.go{align-self:flex-start;font-family:var(--f-display);font-size:22px;background:var(--alarm);color:#fff;border:0;border-radius:6px;padding:14px 28px;cursor:pointer;box-shadow:0 0 0 4px color-mix(in srgb,var(--alarm) 25%,transparent)}
+.go:hover{filter:brightness(1.1)}
+.ending .stamp{display:inline-block;font-family:var(--f-display);font-size:clamp(26px,5vw,40px);padding:6px 18px;border:4px solid currentColor;border-radius:6px;transform:rotate(-3deg);margin:6px 0}
+.ending.win .stamp{color:var(--hp)}
+.ending.sad .stamp{color:var(--amber)}
+.ending.bad .stamp{color:var(--alarm)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px}
+.stat small{display:block;color:var(--muted);font-size:11.5px;letter-spacing:.08em}
+.stat b{font-family:var(--f-digit);font-size:22px;font-weight:400;font-variant-numeric:tabular-nums}
+
+/* QR terminal (no image scene) */
+.terminal{aspect-ratio:16/9;max-width:100%;display:grid;place-items:center;background:radial-gradient(circle at 50% 40%,#1d2640,#0b0e16 70%)}
+.terminal .scr{display:flex;flex-direction:column;align-items:center;gap:10px}
+.terminal canvas{width:min(38vw,170px);height:auto;image-rendering:pixelated;border:8px solid #fff;border-radius:4px;background:#fff}
+.terminal .lb{font-family:var(--f-digit);color:var(--hp);letter-spacing:.12em;font-size:13px}
+
+@media (max-width:560px){
+  .clock .now{font-size:28px}
+  .bar{grid-template-columns:auto 70px auto}
+  .ln-say{grid-template-columns:1fr;gap:2px}
+  .who{justify-self:start}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* additions for storyboard build */
+.scn{font-family:var(--f-digit);font-size:12px;color:var(--muted);letter-spacing:.08em}
+.scn b{color:var(--ink);font-weight:400}
+.rel{display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-size:13px}
+.rel span:nth-child(even){font-size:12px;padding:0 7px;border-radius:3px;border:1px solid var(--line)}
+.r-good{color:var(--hp);border-color:color-mix(in srgb,var(--hp) 45%,var(--line))!important}
+.r-bad{color:var(--alarm);border-color:color-mix(in srgb,var(--alarm) 45%,var(--line))!important}
+.r-mid{color:var(--muted)}
+.ln-news{border-left:3px solid var(--st);padding:6px 12px;background:var(--panel);font-size:14px}
+.ln-news b{display:block;font-size:11px;letter-spacing:.12em;color:var(--st)}
+.tele{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13px;margin-top:8px;color:var(--muted)}
+.tele b{color:var(--alarm);font-weight:700}
+.phase{font-family:var(--f-digit);font-size:11.5px;color:var(--alien);letter-spacing:.1em}
+.ehp{display:grid;gap:6px}
+.final{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:18px 20px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
+.final .big{font-family:var(--f-digit);font-size:clamp(22px,4.4vw,34px);letter-spacing:.08em;line-height:1.2}
+.final .ok{color:var(--hp)} .final .ng{color:var(--alarm)} .final .ws{color:var(--st)}
+.final p{margin:8px 0 0;color:var(--muted)}
+.ending.sad .frame img{filter:grayscale(.85) contrast(1.05)}
+.btnrow{display:flex;flex-wrap:wrap;gap:10px}
+.go.ghost{background:transparent;border:1px solid var(--line);box-shadow:none;color:var(--ink);font-size:18px}
+.go.ghost:hover{border-color:var(--amber)}
+.ch .meta .ok{color:var(--hp);border-color:color-mix(in srgb,var(--hp) 45%,var(--line))}
+.ch .meta .ng{color:var(--alarm);border-color:color-mix(in srgb,var(--alarm) 45%,var(--line))}
+
+/* ===== visual-novel screen (courtroom-drama style menus) ===== */
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+#app{min-height:100%}
+body.game #app{height:100%}
+:root{--bar-hi:#4a97dc;--bar-lo:#1d5796;--bar-edge:rgba(255,255,255,.7);--gold:#f4c94a;--dlg:rgba(7,12,28,.9);--dlgh:clamp(132px,23vh,180px)}
+body.game{padding-left:0;padding-right:0;padding-block:0}
+.vn{min-height:100%;background:#03050a}
+.stagebox{display:flex;flex-direction:column;gap:10px;padding:10px max(16px,env(safe-area-inset-right,0px)) 16px max(16px,env(safe-area-inset-left,0px))}
+.bg{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;order:2;display:block;transition:filter .3s}
+.topbar{order:1;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.ebar{order:3}
+.tabs{order:4}
+.dlg{order:5}
+.menu{order:6}
+.burst{display:none}
+
+/* plaque & HUD */
+.plaque{display:flex;flex-direction:column;background:linear-gradient(180deg,#16244a,#0b1430);border:2px solid var(--bar-edge);border-radius:4px;padding:6px 26px 7px 12px;clip-path:polygon(0 0,100% 0,calc(100% - 16px) 100%,0 100%);min-width:0}
+.plaque .pk{font-family:var(--f-digit);font-size:11px;letter-spacing:.14em;color:var(--gold)}
+.plaque b{font-family:var(--f-display);font-weight:400;font-size:20px;color:#fff;line-height:1.15}
+.plaque .pl{font-size:11.5px;color:#b9c6e6}
+.hudr{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.cap2{display:flex;align-items:center;gap:8px;background:linear-gradient(180deg,var(--bar-hi),var(--bar-lo));border:2px solid var(--bar-edge);border-radius:999px;padding:2px 10px;box-shadow:0 2px 0 rgba(0,0,0,.4)}
+.cap2 .chv{color:var(--gold);font-weight:700}
+.cap2 .clk{font-family:var(--f-digit);font-size:24px;color:var(--alarm);background:#05070c;border-radius:4px;padding:0 8px;line-height:1.25;text-shadow:0 0 10px color-mix(in srgb,var(--alarm) 60%,transparent);font-variant-numeric:tabular-nums}
+.cap2 .lft{font-size:12.5px;font-weight:700;color:#fff;text-shadow:0 1px 0 #0b2a50;white-space:nowrap}
+.mbars{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.mb{display:flex;align-items:center;gap:5px;background:rgba(5,8,16,.75);border:1px solid rgba(255,255,255,.25);border-radius:3px;padding:2px 7px;font-size:11px;color:#c9d2ea}
+.mb i{display:block;width:64px;height:6px;background:#1b2234;border-radius:2px;overflow:hidden}
+.mb i b{display:block;height:100%}
+.mb em{font-style:normal;font-family:var(--f-digit);color:#fff;min-width:34px;text-align:right;font-variant-numeric:tabular-nums}
+.tools{display:flex;gap:6px;align-items:center}
+.tb{border:2px solid var(--bar-edge);background:linear-gradient(180deg,#2a3a63,#141f3d);color:#fff;border-radius:4px;padding:3px 12px;font-size:12.5px;font-weight:700;cursor:pointer}
+.tb:hover{border-color:var(--gold)}
+.tb.sm{padding:1px 9px;font-size:11.5px;border-width:1px}
+.hot2{font-size:12px;font-weight:700;color:#fff;background:var(--alarm);padding:2px 8px;border-radius:3px;animation:pulse 1.1s infinite}
+
+/* enemy bar */
+.ebar{background:rgba(6,9,18,.82);border:2px solid color-mix(in srgb,var(--alien) 70%,#fff);border-radius:6px;padding:7px 12px}
+.ebar .en{display:flex;align-items:baseline;gap:8px}
+.ebar .en b{font-family:var(--f-display);font-weight:400;font-size:18px;color:#fff}
+.ebar .ph{font-family:var(--f-digit);font-size:11px;color:var(--alien);letter-spacing:.1em}
+.ebar .hpn{margin-left:auto;font-family:var(--f-digit);color:#fff}
+.ebar i{display:block;height:9px;background:#1b2234;border-radius:2px;overflow:hidden;margin:5px 0}
+.ebar i b{display:block;height:100%;background:linear-gradient(90deg,var(--alien),#ff5fa2);transition:width .4s}
+.ebar .nx{font-size:12.5px;color:#c9d2ea}
+.ebar .nx strong{color:var(--alarm)}
+.ebar .exp{color:var(--hp);font-weight:700;animation:pulse .8s infinite}
+
+/* bottom tabs */
+.tabs{display:flex;justify-content:space-between;gap:8px;pointer-events:none}
+.tab{background:linear-gradient(180deg,var(--bar-hi),var(--bar-lo));border:2px solid var(--bar-edge);color:#fff;font-size:12.5px;font-weight:700;padding:2px 16px;text-shadow:0 1px 0 #0b2a50;white-space:nowrap}
+.tab.tl{clip-path:polygon(0 0,calc(100% - 12px) 0,100% 100%,0 100%);padding-right:22px;border-radius:3px 0 0 3px}
+.tab.tr{clip-path:polygon(12px 0,100% 0,100% 100%,0 100%);padding-left:22px;border-radius:0 3px 3px 0}
+
+/* dialogue box */
+.dlg{position:relative;background:var(--dlg);border:2px solid rgba(255,255,255,.82);border-radius:10px;padding:24px 20px 30px;min-height:120px;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.45),inset 0 0 0 4px rgba(74,151,220,.18)}
+.dlg[role=region]{cursor:default}
+.dlg:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+.plate{position:absolute;top:-15px;left:16px;font-size:14px;font-weight:700;color:#fff;padding:3px 18px;border:2px solid #fff;border-radius:4px;background:linear-gradient(180deg,var(--bar-hi),var(--bar-lo));text-shadow:0 1px 0 rgba(0,0,0,.4);white-space:nowrap;max-width:calc(100% - 32px);overflow:hidden;text-overflow:ellipsis}
+.p-me{background:linear-gradient(180deg,#4fa3ec,#1d5796)}
+.p-mom{background:linear-gradient(180deg,#e4789a,#9c2f55)}
+.p-teacher{background:linear-gradient(180deg,#f0b23e,#a0640c)}
+.p-alien{background:linear-gradient(180deg,#a874f0,#5a2aa0)}
+.p-army{background:linear-gradient(180deg,#6fae5b,#2f6326)}
+.p-npc{background:linear-gradient(180deg,#7d8aa6,#3d4763)}
+.p-news{background:linear-gradient(180deg,#e9504a,#8f1a16)}
+.p-alert{background:linear-gradient(180deg,#ff5a4c,#b0170c)}
+.p-sys{background:linear-gradient(180deg,#3b4a68,#1a2238);font-family:var(--f-digit);letter-spacing:.1em}
+.p-res{background:linear-gradient(180deg,#f2c94c,#b0820f);color:#1a1200;text-shadow:none}
+.p-hint{background:linear-gradient(180deg,#f2c94c,#b0820f);color:#1a1200;text-shadow:none}
+.p-sel{background:linear-gradient(180deg,#5bd18a,#1d7a46)}
+.dlg-body{max-height:100%;overflow:auto}
+.dlg-text{margin:0;font-size:17px;line-height:1.7;color:#fff;letter-spacing:.01em}
+.dlg-text.narr{color:#d9e2f5}
+.dlg-text.sys{font-family:var(--f-digit);font-size:15px;color:#9fd3ff}
+.dlg-text.sfx{font-family:var(--f-display);font-size:30px;color:var(--gold);transform:skew(-6deg)}
+.is-alert{border-color:#ff7a6e;box-shadow:0 0 0 3px rgba(255,74,61,.25),0 6px 24px rgba(0,0,0,.45)}
+.is-hint{border-color:var(--gold)}
+.dlg .deltas{margin-top:8px}
+.dlg-meta{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.dlg-meta span{font-family:var(--f-digit);font-size:12px;padding:1px 7px;border-radius:3px;border:1px solid rgba(255,255,255,.3);color:#c9d2ea}
+.dlg-meta .tm{color:#fff}
+.dlg-meta .req{color:#c9a7ff;border-color:#8a63d0}
+.dlg-meta .ok{color:var(--hp);border-color:var(--hp)}
+.dlg-meta .ng{color:#ff8a80;border-color:#ff6b5f}
+.dlg-foot{position:absolute;right:12px;bottom:6px;display:flex;align-items:center;gap:10px}
+.nextarrow{color:var(--gold);font-size:14px;animation:bob .8s ease-in-out infinite}
+.dlg.typing .nextarrow{visibility:hidden}
+@keyframes bob{50%{transform:translateY(3px)}}
+
+/* choice menu */
+.menu{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.mq{align-self:center;font-size:13px;font-weight:700;color:#fff;background:rgba(5,8,16,.8);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:3px 14px;margin-bottom:2px}
+.mbar{position:relative;display:grid;grid-template-columns:42px 1fr auto;align-items:center;min-height:40px;padding:0 12px 0 0;text-align:left;color:#fff;font-weight:700;font-size:15px;text-shadow:0 1px 0 rgba(0,0,0,.45);background:linear-gradient(180deg,var(--bar-hi),var(--bar-lo));border:2px solid var(--bar-edge);border-radius:3px;cursor:pointer;box-shadow:0 2px 0 rgba(0,0,0,.4);transition:transform .12s,border-color .12s}
+.mbar .no{align-self:stretch;display:grid;place-items:center;background:#0d2d57;font-family:var(--f-digit);font-size:15px;color:#cfe5ff;border-right:2px solid var(--bar-edge);margin-right:12px}
+.mbar .tm{font-family:var(--f-digit);font-size:12px;font-weight:400;color:#dbe9ff;padding-left:10px}
+.mbar.focus{border-color:var(--gold);background:linear-gradient(180deg,#66b0f0,#2a6db4);transform:translateX(6px);box-shadow:0 0 0 2px rgba(244,201,74,.35),0 2px 0 rgba(0,0,0,.4)}
+.mbar.focus::before{content:"▶";position:absolute;left:-22px;color:var(--gold);font-size:14px;animation:bob .8s infinite}
+.mbar.special .lb{color:#ffe28a}
+.mbar:disabled{cursor:not-allowed;background:linear-gradient(180deg,#646b7c,#3a404e);color:#c3c8d4;opacity:.85}
+.mbar:disabled .no{background:#2c313c;color:#9aa1b0}
+.mbar:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.chev{align-self:center;background:transparent;border:0;color:var(--gold);font-size:20px;line-height:.6;cursor:pointer;padding:2px 10px}
+.chev:hover{filter:brightness(1.3)}
+
+/* starburst sound effect */
+.burst span{display:grid;place-items:center;width:100%;height:100%;white-space:nowrap;font-family:var(--f-display);font-size:clamp(26px,3.6vw,50px);color:#7a0d06;transform:rotate(-8deg);-webkit-text-stroke:2px #fff;paint-order:stroke}
+@keyframes pop{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}60%{transform:translate(-50%,-50%) scale(1.08);opacity:1}100%{transform:translate(-50%,-50%) scale(1)}}
+@keyframes shake{0%,100%{transform:none}20%{transform:translate(-6px,3px)}40%{transform:translate(5px,-4px)}60%{transform:translate(-4px,-2px)}80%{transform:translate(3px,4px)}}
+
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:19;border:0;padding:0;cursor:pointer}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(360px,100%);z-index:20;background:var(--bg);border-left:2px solid var(--bar-edge);overflow:auto;display:flex;flex-direction:column;gap:14px;padding:calc(14px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) 16px}
+.drawer .dh{display:flex;justify-content:space-between;align-items:center}
+.drawer .dh b{font-family:var(--f-display);font-weight:400;font-size:22px}
+.infobtn{border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:4px;padding:5px 10px;font-size:12.5px;cursor:pointer}
+.infobtn:hover{border-color:var(--gold);color:var(--gold)}
+
+/* ----- full-screen overlay mode ----- */
+@media (min-width:760px) and (min-height:480px){
+  body.game{overflow:hidden}
+  .vn{height:100%}
+  .stagebox{position:relative;display:block;height:100%;padding:0;overflow:hidden}
+  .bg{position:absolute;inset:0;height:100%;aspect-ratio:auto;border-radius:0}
+  .choosing .bg{filter:brightness(.5) saturate(.9)}
+  .stagebox.shake .bg{animation:shake .4s ease 2}
+  .topbar{position:absolute;top:0;left:0;right:0;padding:calc(10px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 40px max(16px,env(safe-area-inset-left,0px));background:linear-gradient(rgba(0,0,0,.6),transparent);flex-wrap:nowrap}
+  .ebar{position:absolute;top:calc(84px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);width:min(520px,60%)}
+  .burst{display:block;position:absolute;left:50%;top:42%;width:min(560px,60%);aspect-ratio:2.2/1;transform:translate(-50%,-50%);animation:pop .35s ease-out both;background:#ffd23f;clip-path:polygon(50% 0,58% 22%,78% 4%,74% 30%,100% 24%,82% 46%,100% 62%,76% 66%,84% 96%,60% 76%,50% 100%,40% 76%,16% 96%,24% 66%,0 62%,18% 46%,0 24%,26% 30%,22% 4%,42% 22%);filter:drop-shadow(0 4px 0 #8a1a10)}
+  .menu{position:absolute;left:50%;top:calc(50% - var(--dlgh) / 2 + 10px);transform:translate(-50%,-50%);width:min(580px,70%);max-height:calc(100% - var(--dlgh) - 170px);overflow:auto;padding:4px 4px 4px 28px}
+  .tabs{position:absolute;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(var(--dlgh) + 26px + env(safe-area-inset-bottom,0px))}
+  .dlg{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom,0px));width:min(1080px,calc(100% - 32px));height:var(--dlgh);min-height:0}
+  .dlg-body{height:100%}
+}
+/* cover */
+body.cv{padding:0;overflow:hidden}
+body.cv #app{height:100%}
+.cover{position:relative;height:100%;min-height:100%;overflow:hidden;background:#03050a;display:grid;place-items:center}
+.cv-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:blur(24px) brightness(.45);transform:scale(1.1)}
+.cv-img{position:absolute;inset:0;width:100%;height:100%;max-width:none;object-fit:contain;display:block}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.cv-ui{position:absolute;left:0;right:0;bottom:calc(5% + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:10px;padding-inline:max(16px,env(safe-area-inset-left,0px))}
+.cv-start{display:grid;grid-template-columns:52px auto;align-items:center;min-width:min(340px,90vw);height:58px;padding:0 34px 0 0;font-family:var(--f-display);font-size:26px;color:#fff;text-shadow:0 2px 0 #0b2a50;background:linear-gradient(180deg,#5aa8ec,#1d5796);border:3px solid var(--gold);border-radius:4px;cursor:pointer;box-shadow:0 0 0 4px rgba(244,201,74,.25),0 6px 0 rgba(0,0,0,.45);animation:glow 1.6s ease-in-out infinite}
+.cv-start .no{align-self:stretch;display:grid;place-items:center;background:#0d2d57;border-right:3px solid var(--gold);color:var(--gold);font-size:20px;margin-right:22px}
+.cv-start:hover{filter:brightness(1.12)}
+@keyframes glow{50%{box-shadow:0 0 0 8px rgba(244,201,74,.12),0 6px 0 rgba(0,0,0,.45)}}
+.cv-help{border:2px solid var(--bar-edge);background:rgba(8,14,30,.8);color:#fff;border-radius:4px;padding:5px 18px;font-weight:700;font-size:13.5px;cursor:pointer}
+.cv-help:hover{border-color:var(--gold)}
+.cv-press{font-family:var(--f-digit);font-size:12px;letter-spacing:.12em;color:#fff;text-shadow:0 1px 3px #000;animation:pulse 1.6s infinite}
+.helpbox{position:fixed;z-index:20;left:50%;top:50%;transform:translate(-50%,-50%);width:min(760px,calc(100% - 32px));max-height:calc(100% - 40px);overflow:auto;background:var(--bg);border:2px solid var(--bar-edge);border-radius:8px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.helpbox .dh{display:flex;justify-content:space-between;align-items:center}
+.helpbox .dh b{font-family:var(--f-display);font-weight:400;font-size:24px}
+.helpbox .lede{font-size:15px}
+.backbtn{border-color:#ff9f8f!important}
+.tb:disabled{opacity:.4;cursor:not-allowed}
+@media (max-aspect-ratio:1/1){
+  body.cv{overflow:auto}
+  .cover{display:flex;flex-direction:column;justify-content:center;gap:22px;padding-block:24px}
+  .cv-img{position:relative;inset:auto;height:auto;aspect-ratio:1024/572}
+  .cv-ui{position:relative;bottom:auto}
+  .cv-start{height:52px;font-size:22px;min-width:min(300px,86vw)}
+  .cv-press{display:none}
+}
+@media (prefers-reduced-motion:reduce){.burst{animation:none!important;transform:translate(-50%,-50%)}}
+</style>
+
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+(function(){
+const DEADLINE=590, START=450, TOTAL=25;
+const IMG=n=>`img/${n}.jpg`;
+const CH={1:['지옥의 기상','권주임의 집'],2:['지하철 대탈출','지하철역'],3:['서울 대전쟁','강남 일대'],4:['외계인의 역습','코엑스'],5:['최후의 출근','코엑스 4층']};
+const ITEMS={
+  '스마트폰':{d:'출석 QR의 생명줄. 장면마다 배터리 1% 소모'},
+  '지갑':{d:'잔액 32,000원'},
+  '교통카드':{d:'지하철 탑승용'},
+  'AX 마스터즈 수강증':{d:'신분 증명. 군인에게 보여줄 수 있다'},
+  '에너지바':{d:'HP +20, 스태미나 +25',use:{hp:20,st:25}},
+  '회복킷':{d:'HP +40',use:{hp:40}},
+  '보조배터리':{d:'배터리 +50%',use:{bat:50}},
+  '외계 신호 기록':{d:'UFO 주파수 패턴. 대화·방어막·레이저 해제'},
+  'UFO 사진':{d:'군인을 설득하는 증거'},
+  '강사 통화 기록':{d:'"9시 50분까지 오세요." 증거이자 정신 공격 무기'},
+  '괴생명체 정보':{d:'첫 전투 적의 약점: 더듬이 밑 관절'},
+  '지도자 약점 정보':{d:'외계인 지도자의 약점: 이마의 보석'},
+  '소화기':{d:'공격력 +5. 던지면 레이저를 교란한다'},
+  '외계 전자 칩':{d:'외계 보안 시스템 교란 · 제어 장치 접근'},
+  '오토바이 열쇠':{d:'군인이 빌려준 오토바이'},
+  '군사 우회로 정보':{d:'삼성역까지 군 전용 우회로'}
+};
+const fmt=t=>String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const has=(s,i)=>s.items.includes(i);
+const instinct=s=>DEADLINE-s.t<=40;
+const R=(v,s)=>typeof v==='function'?v(s):v;
+const clamp=v=>Math.max(0,Math.min(100,v));
+const trustScore=s=>s.trust+(has(s,'강사 통화 기록')?1:0)+(has(s,'UFO 사진')?1:0);
+
+/* ================= BATTLES ================= */
+const BATTLES={
+  b1:{name:'외계 생명체',img:'s10',n:9,max:40,win:'sc10',reward:['외계 전자 칩'],flee:'sc10',weakItem:'괴생명체 정보',weakName:'더듬이 관절',weakDmg:25,
+      intro:['외계 생명체가 낫 같은 앞발을 치켜든다. 권주임은 벽에서 비상용 소화기를 뜯어냈다.'],
+      next:(b,s)=>({name:'앞발 베기',dmg:s.f.alienHostile?15:10})},
+  b2:{name:'외계 경비병',img:'s17',n:17,max:60,win:'sc18',reward:['회복킷'],weakName:'갑옷 이음매',weakDmg:30,
+      intro:['경비병이 전기 창을 휘두른다. 권주임은 쓰러진 안내판을 방패 삼아 막아선다.'],
+      next:(b)=>b.turn%2?{name:'전기 찌르기',dmg:16}:{name:'창 휘두르기',dmg:12}},
+  b3:{name:'외계인 지도자',img:'s21',n:21,boss:true,win:'sc22',reward:[],weakItem:'지도자 약점 정보',weakFlag:'bossWeak',weakName:'이마의 보석',weakDmg:35,
+      intro:[['외계인 지도자','네가 무엇을 위해 싸우는지 말해라!'],['권주임','출석!!!'],['외계인 지도자','그것이 지구보다 중요한가?'],['권주임','(...이 말은 필살기로 아껴두자.)']],
+      next:(b)=>{
+        const p=b.hp/b.max;
+        if(p>0.66) return b.turn%2?{name:'에너지탄',dmg:14,ph:1}:{name:'일반 공격',dmg:10,ph:1};
+        if(p>0.33) return {name:'광역 충격파',dmg:18,ph:2};
+        if(!b.charging) return {name:'레이저 충전',dmg:0,ph:3,charge:true};
+        return {name:'강력한 레이저',dmg:30,ph:3,laser:true};
+      }}
+};
+function startBattle(s,id,opt={}){
+  const d=BATTLES[id];
+  const max=id==='b3'?(s.f.controlClean?120:150):d.max;
+  s.battle={id,hp:max-(opt.pre||0),max,turn:0,exposed:false,charging:false,phase:1,block:!!opt.block,lastLog:opt.log||''};
+  s.battle.nextMove=d.next(s.battle,s);
+  return 'BATTLE';
+}
+function battleChoices(s){
+  const b=s.battle,d=BATTLES[b.id],boost=instinct(s)?1.5:1;
+  const tt=d.boss?3:2;
+  const atk=Math.round((18+(has(s,'소화기')?5:0))*boost);
+  const weakKnown=(d.weakItem&&has(s,d.weakItem))||(d.weakFlag&&s.f[d.weakFlag])||b.exposed;
+  const enemyTurn=(st,msg,{def=false,stun=false}={})=>{
+    const B=st.battle;
+    if(B.hp<=0){ // victory
+      const rw=d.reward.filter(i=>!has(st,i)); rw.forEach(i=>st.items.push(i));
+      st.battle=null;
+      const text=msg+` ${d.name}을(를) 쓰러뜨렸다!`+(rw.length?` 전리품: ${rw.join(', ')}.`:'');
+      return {res:text,go:d.win};
+    }
+    const mv=B.nextMove; let line=msg;
+    if(stun){ line+=` ${d.name}이(가) 충격으로 움직이지 못한다.`; if(mv.charge) B.charging=true; }
+    else if(B.block){ B.block=false; line+=` 역무원의 경고 덕분에 첫 공격을 미리 피했다.`; }
+    else if(mv.charge){ B.charging=true; line+=` 지도자가 이마의 보석에 에너지를 모은다. 다음 턴 강력한 레이저!`; }
+    else{
+      let dmg=mv.dmg;
+      if(def){ dmg = mv.laser?0:Math.round(dmg*0.3); }
+      if(mv.laser){ B.charging=false; if(def){ B.exposed=true; line+=` 레이저를 막아냈다! 과열된 보석이 그대로 드러났다. 지금이 약점 공격 기회다.`; } }
+      if(dmg>0){ st.hp=clamp(st.hp-dmg); line+=` ${d.name}의 ${mv.name}! HP -${dmg}.`; }
+      else if(!mv.laser) line+=` ${mv.name}을(를) 완벽히 막았다.`;
+    }
+    B.turn++;
+    const prev=B.phase; B.nextMove=d.next(B,st); if(B.nextMove.ph) B.phase=B.nextMove.ph;
+    if(d.boss && B.phase>prev) line+= B.phase===2?' [2페이즈] 지도자의 갑옷이 붉게 달아오른다!':' [3페이즈] 지도자의 보석이 불안정하게 깜빡인다!';
+    B.lastLog=line;
+    return {res:line,go:'BATTLE'};
+  };
+  const list=[
+    {t:'일반 공격',d:`${has(s,'소화기')?'소화기로':'주먹으로'} 내려친다. 예상 피해 ${atk}.`,time:tt,act:st=>{st.battle.hp-=atk;st.battle.exposed=false;return enemyTurn(st,`${atk}의 피해!`);}},
+    {t:'방어',d:'자세를 낮추고 막는다. 받는 피해 70% 감소, 스태미나 +15.'+(d.boss?' 레이저는 완전히 막는다.':''),time:tt,act:st=>{st.st=clamp(st.st+15);return enemyTurn(st,'방어 자세!',{def:true});}},
+    {t:'약점 공격',d:`${weakKnown?d.weakName:'???'}을(를) 노린다. 예상 피해 ${Math.round(d.weakDmg*boost)}.`,time:tt,need:{custom:weakKnown,label:'약점 정보 필요'},act:st=>{const dm=Math.round(d.weakDmg*boost);st.battle.hp-=dm;st.battle.exposed=false;return enemyTurn(st,`${d.weakName}에 정타! ${dm}의 피해!`);}},
+    {t:'필살기: 출근 본능',d:'"내가 오늘 수업 빠지면 네가 책임질 거야?!" 적을 기절시킨다.',time:1,special:true,need:{st:30},act:st=>{st.st-=30;const dm=Math.round(40*boost);st.battle.hp-=dm;return enemyTurn(st,`광역 정신적 충격! ${dm}의 피해!`,{stun:true});}}
+  ];
+  s.items.filter(i=>ITEMS[i]?.use&&(ITEMS[i].use.hp||ITEMS[i].use.st)).forEach(i=>{
+    list.push({t:`아이템 사용: ${i}`,d:ITEMS[i].d+'. 한 턴을 쓴다.',time:tt,act:st=>{const u=ITEMS[i].use;if(u.hp)st.hp=clamp(st.hp+u.hp);if(u.st)st.st=clamp(st.st+u.st);st.items=st.items.filter(x=>x!==i);return enemyTurn(st,`${i} 사용!`);}});
+  });
+  if(d.flee) list.push({t:'역무실 방향으로 도망친다',d:'전투를 포기한다. 전리품 없음.',time:4,st:-15,act:st=>{st.battle=null;return {res:'등 뒤로 앞발이 스쳤지만 역무실 문을 닫는 데 성공했다.',go:d.flee};}});
+  return list;
+}
+
+/* ================= SCENES ================= */
+const SC={
+sc01:{n:1,ch:1,img:'s02',cp:true,title:'오늘도 출근이라니',
+  lines:[['*','삐비비빅! 삐비비빅!'],['#','2026년 10월 16일 (금) 07:30'],['권주임','아 씨... 벌써 7시 반이야?'],['','스마트폰을 확인한다.'],['!','서울 상공에 미확인 비행체 다수 출현. 시민 여러분께서는 외출을 자제하시기 바랍니다.'],['*','콰아아앙!'],['권주임','오? 오늘 휴강인가?'],['','단체 채팅방에 강사의 메시지가 올라온다.'],['강사','여러분, 오늘 수업 정상 진행합니다. 지각하지 마세요^^'],['권주임','아니, 외계인이 쳐들어왔다고요!!!']],
+  hint:'집에서 한 선택이 끝까지 따라간다. 옥상의 외계 신호 기록은 첫 전투·방어막·레이저 함정을 빠르게 푸는 열쇠이고, 강사 통화 기록과 어머니의 에너지바도 뒤에서 쓸모가 있다. 바로 뛰쳐나가면 시간은 벌지만 빈손이다.',
+  choices:[
+    {t:'엄마가 차려준 밥을 먹는다',d:'전쟁이 나도 밥은 먹고 가야지.',time:2,go:'sc02',res:'부엌에서 된장국 냄새가 난다.'},
+    {t:'당장 옷을 입고 집을 뛰쳐나간다',d:'쓰레기도 밥도 포기한다.',time:2,go:'sc03',res:'후드 집업에 팔을 꿰며 현관으로 달린다.'},
+    {t:'옥상으로 올라가 UFO를 조사한다',d:'적을 알아야 출근도 한다.',time:2,go:'sc04',res:'슬리퍼 바람으로 옥상 문을 연다.'},
+    {t:'강사에게 전화해 휴강을 요청한다',d:'전쟁 중 출석 강요는 부당하다.',time:2,go:'sc05',res:'통화 연결음이 울린다.'}]},
+
+sc02:{n:2,ch:1,img:'s03',title:'전쟁이 나도 밥은 먹고 가!',
+  lines:[['엄마','혁주야! 밥 먹고 가!'],['권주임','엄마, 지금 외계인이 쳐들어왔어!'],['엄마','외계인이 오든 말든 밥은 먹어야지.'],['권주임','나 진짜 지각한다니까?'],['엄마','그럼 빨리 먹어!']],
+  hint:'시간이 가장 아깝다면 3번이 효율적이다. 에너지바는 전투 중이나 마지막 계단에서 체력과 스태미나를 한꺼번에 채워준다.',
+  choices:[
+    {t:'밥을 끝까지 먹는다',d:'든든하게 먹고 간다.',time:12,st:20,rel:{엄마:'흐뭇'},go:'sc06',res:'"그래, 그렇게 먹어야 힘이 나지." 배가 든든하다.'},
+    {t:'간단히 먹고 나간다',d:'국에 밥 말아 세 숟갈.',time:6,st:10,go:'sc06',res:'입에 밥을 문 채 운동화를 신는다.'},
+    {t:'어머니에게 에너지바를 받아 나온다',d:'밥 대신 비상식량.',time:3,add:['에너지바'],rel:{엄마:'걱정'},go:'sc06',res:'"이거라도 먹어!" 어머니가 에너지바를 주머니에 찔러 넣는다.'}]},
+
+sc03:{n:3,ch:1,img:'s04',title:'일단 튀어!',
+  enter:s=>{s.rel['엄마']='서운';},
+  lines:[['엄마','혁주야! 쓰레기 버리고 가!'],['권주임','엄마! 내가 지금 쓰레기 버릴 때가 아니잖아!'],['*','타다다다닥!'],['','멀리서 폭발음이 들린다.'],['권주임','일단 살아서 코엑스까지 가자.']],
+  hint:'스태미나 5와 시간 4분의 교환이다. 이 게임에서는 대개 시간이 더 귀하다.',
+  choices:[
+    {t:'계단을 이용해 내려간다',d:'빠르지만 다리가 아프다.',time:4,st:-5,go:'sc06',res:'15층을 단숨에 내려왔다.'},
+    {t:'엘리베이터를 기다린다',d:'느리지만 힘은 아낀다.',time:8,go:'sc06',res:'4분을 더 기다려 엘리베이터를 탔다. 다리는 멀쩡하다.'}]},
+
+sc04:{n:4,ch:1,img:'s05',title:'옥상의 미확인 비행체',
+  lines:[['*','우우우웅...'],['','서울 상공을 거대한 UFO가 가득 채우고 있다.'],['권주임','저거 타고 가면 코엑스 5분 컷 아닌가?'],['#','[스마트폰] 미확인 전자기 신호 감지 · 일정 주기로 반복'],['권주임','뭐야, 특정 주파수로 움직이네?']],
+  hint:'신호 기록은 첫 전투의 대화, 코엑스 방어막 조사, 레이저 함정 해제에 쓰인다. UFO 사진은 검문소 군인을 설득하는 증거가 된다.',
+  choices:[
+    {t:'신호 패턴을 스마트폰에 기록한다',d:'외계 기술의 단서.',time:9,bat:-3,add:['외계 신호 기록'],go:'sc06',res:'신호 패턴이 메모장에 저장됐다. 이상하게도 출근 시간대에만 신호가 강해진다.'},
+    {t:'UFO를 촬영한다',d:'증거는 힘이다.',time:9,bat:-3,add:['UFO 사진'],go:'sc06',res:'선명한 UFO 사진을 건졌다. 이 정도면 뉴스에도 나오겠다.'},
+    {t:'더 조사하지 않고 내려간다',d:'구경은 여기까지.',time:5,go:'sc06',res:'옥상 문을 닫고 계단으로 달린다.'}]},
+
+sc05:{n:5,ch:1,img:'s06',title:'강사님, 제발 휴강 좀!',
+  enter:s=>{s.rel['강사']='냉정';},
+  lines:[['권주임','강사님, 지금 전쟁 난 거 아시죠?'],['강사','네. 알고 있습니다.'],['권주임','그런데 수업을 한다고요?'],['강사','출석은 중요하니까요.'],['권주임','제 목숨은 안 중요합니까?!'],['강사','9시 50분까지 오세요.'],['*','뚜뚜뚜...']],
+  hint:'통화 기록은 "강사가 오라고 했다"는 증거다. 군인을 설득할 때, 그리고 전혀 예상하지 못한 상대에게도 통할지 모른다.',
+  choices:[
+    {t:'통화 내용을 저장한다',d:'증거는 남겨둔다.',time:6,add:['강사 통화 기록'],go:'sc06',res:'녹음 파일 저장 완료. "9시 50분까지 오세요." 다시 들어도 소름 돋는다.'},
+    {t:'다시 전화한다',d:'한 번 더 따져본다.',time:10,bat:-4,go:'sc06',res:'"고객님의 전화가 연결되지 않아..." 연결 실패. 시간만 갔다.'},
+    {t:'전화를 끊고 출발한다',d:'말이 안 통한다.',time:5,go:'sc06',res:'한숨을 쉬며 현관문을 연다.'}]},
+
+sc06:{n:6,ch:2,img:'s07',cp:true,title:'지하철역으로 돌진',
+  lines:[['','지하철역 입구. 수많은 시민이 밖으로 뛰쳐나오고, 권주임만 반대로 들어가려 한다.'],['시민','도망쳐요! 지하철에 뭔가 있어요!'],['권주임','그럼 출근은 뭘로 하라는 거야!']],
+  hint:'시민에게 물으면 첫 전투 적의 약점을 알 수 있다. 교통 확인은 배터리를 쓰는 대신 2분을 아낀다.',
+  choices:[
+    {t:'지하철역으로 들어간다',d:'역류하는 인파를 뚫는다.',time:13,go:'sc07',res:'인파를 뚫고 겨우 열차에 올랐다.'},
+    {t:'시민에게 상황을 물어본 뒤 들어간다',d:'적을 알고 들어간다.',time:16,add:['괴생명체 정보'],go:'sc07',res:'"더듬이 밑 관절이 약해요! 우리 아저씨가 우산으로 찔렀대요!" 적 정보를 얻었다.'},
+    {t:'교통 상황을 확인한다',d:'앱으로 가장 빠른 열차를 찾는다.',time:11,bat:-5,go:'sc07',res:'2호선 1대 운행 중, 2분 뒤 출발. 계단을 날아 내려가 간신히 탔다.'}]},
+
+sc07:{n:7,ch:2,img:'s08',title:'출근길 지옥철',
+  lines:s=>[['','사람들로 꽉 찬 열차.'],['권주임','아니, 오늘 같은 날에도 출근하는 사람이 이렇게 많아?'],['직장인','저희도 회사에서 정상 출근하래요.'],['권주임','아... 다 똑같구나.'],['','옆에 서 있던 정장 차림 승객의 피부가 초록색으로 변하기 시작한다.'],...(has(s,'외계 신호 기록')?[['#','[스마트폰] 옥상에서 기록한 신호와 같은 주파수 감지']]:[])],
+  hint:'모든 외계인이 적은 아니다. 대화로 얻는 정보는 최종 보스전에서 결정적이다. 반대로 소란을 피우면 누군가 원한을 품는다.',
+  choices:[
+    {t:'모른 척한다',d:'위험을 피한다.',time:9,go:'sc08',res:'초록 승객은 조용히 손잡이를 잡고 있다. 서로 못 본 척.'},
+    {t:'외계인에게 말을 건다',d:'추가 정보를 얻을 기회.',time:11,add:['지도자 약점 정보'],rel:{'외계인 승객':'우호'},go:'sc08',res:'"...나도 출근 중이다. 우리 지도자는 이마의 보석을 맞으면 아무것도 못 해. 비밀이다." 외계인 승객이 윙크한다.'},
+    {t:'주변 승객에게 알린다',d:'시민의 의무.',time:14,set:{alienHostile:1},rel:{'외계인 승객':'적대'},go:'sc08',res:'비명과 소란! 외계인은 이를 갈며 다음 칸으로 사라졌다. "기억하겠다, 인간."'}]},
+
+sc08:{n:8,ch:2,img:'s09',title:'열차 운행 중단',
+  lines:s=>[['*','끼이이익! 펑!'],['','터널 한가운데서 전동차가 멈춘다. 정전. 붉은 비상등만 켜진다.'],['안내 방송','현재 원인 불명의 전력 장애로 운행이 중단되었습니다.'],['권주임','안 돼... 내 출석...'],['','전동차 뒤편에서 끔찍한 소리가 들려온다.'],...(s.f.alienHostile?[['외계인','(뒤 칸에서) 크르르... 기억한다고 했지, 인간.']]:[])],
+  hint:'역무원의 경고를 들으면 다음 전투에서 적의 첫 공격을 피한다. 문을 억지로 열면 빠르지만 다친다.',
+  choices:[
+    {t:'비상문을 열 준비를 한다',d:'비상 코크를 찾아 차분히.',time:8,go:'sc09',res:'비상 코크를 돌려 문을 열고 선로로 내려섰다.'},
+    {t:'역무원에게 연락한다',d:'비상 인터폰을 누른다.',time:10,bat:-3,set:{warned:1},go:'sc09',res:'역무원: "승강장에 괴생명체가 있어요! 마주치면 첫 공격부터 피하세요!" 마음의 준비가 됐다.'},
+    {t:'강제로 문을 연다',d:'맨손으로 문을 비튼다.',time:5,hp:-10,go:'sc09',res:'손톱이 깨졌지만 문이 열렸다.'}]},
+
+sc09:{n:9,ch:2,img:'s10',title:'첫 번째 외계인 전투',
+  lines:[['','어두운 터널 끝 승강장. 외계 생명체가 실루엣을 드러낸다.'],['외계 생명체','크르르르...'],['권주임','야, 너도 출근하냐?'],['','외계 생명체가 돌진한다.'],['권주임','아 진짜!!!']],
+  hint:'전투에서 이기면 외계 전자 칩을 얻는다. 칩은 챕터 4의 경비병과 제어실을 크게 단축한다. 도망치면 빠르지만 칩을 못 얻는다. 적 정보가 있다면 약점 공격이 열린다.',
+  choices:[
+    {t:'비상용 소화기로 공격한다',d:'전투 개시. 승리 보상: 외계 전자 칩.',time:1,add:['소화기'],act:s=>({res:'벽에서 소화기를 뜯어낸다. 전투 개시!',go:startBattle(s,'b1',{block:s.f.warned})})},
+    {t:'역무실 방향으로 도망친다',d:'싸울 시간이 없다.',time:4,st:-15,go:'sc10',res:'앞발이 등을 스쳤지만 역무실 문을 닫는 데 성공했다.'},
+    {t:'외계 신호 기록을 이용해 말을 건다',d:'같은 주파수로 신호를 튼다.',time:4,need:{item:'외계 신호 기록'},add:['외계 전자 칩'],go:'sc10',res:'"...우리 신호를 아는 인간?" 생명체가 공손해진다. 미안하다며 외계 전자 칩을 내밀고 사라진다.'}]},
+
+sc10:{n:10,ch:2,img:'s11',title:'탈출을 위한 전력 복구',
+  lines:[['','역무실 배전반. 빨강, 파랑, 초록 회로가 끊겨 있다.'],['권주임','하... 이걸 왜 내가 고치고 있냐.'],['#','[배전반 안내] 전원 복구 → 통신 시스템 연결 → 출입문 잠금 해제'],['#','[회로 라벨] 초록 = 출입문 잠금 · 빨강 = 주 전원 · 파랑 = 통신 중계기']],
+  hint:'안내문의 세 단계를 라벨에서 하나씩 색으로 바꿔 보자. 순서가 맞으면 10분이면 끝난다.',
+  choices:[
+    {t:'빨강 → 파랑 → 초록 순서로 연결한다',d:'회로를 하나씩 잇는다.',time:10,go:'sc11',res:'전원, 통신, 출입문 순으로 불이 들어온다. 잠금 장치가 풀렸다! 지상으로 탈출한다.'},
+    {t:'파랑 → 빨강 → 초록 순서로 연결한다',d:'통신부터 살린다.',time:17,hp:-10,go:'sc11',res:'퍽! 전원 없이 연결한 통신 회로가 타버렸다. 처음부터 다시 해서 겨우 열었다.'},
+    {t:'초록 → 빨강 → 파랑 순서로 연결한다',d:'문부터 연다.',time:17,hp:-10,go:'sc11',res:'잠금 장치가 경보를 울린다. 손이 찌릿하다. 다시 해서 겨우 열었다.'},
+    {t:'도구로 비상문을 강제로 개방한다',d:'퍼즐은 사치다.',time:18,st:-15,go:'sc11',res:'빠루로 18분 동안 비상문을 비틀었다. 온몸이 땀범벅이다.'}]},
+
+sc11:{n:11,ch:3,img:'s01',cp:true,title:'서울은 이미 전쟁터',
+  lines:[['','역 출구를 올라오자 도심이 폐허가 되어 있다. 군용 차량 사이로 시민들이 대피한다.'],['권주임','와... 진짜 전쟁 났네.'],['뉴스 속보','북한군이 군사 작전을 개시했으며, 외계인의 통신 교란으로 혼란이 확대되고 있습니다.'],['권주임','아니, 누가 오늘 출근 막으라고 작정했냐?']],
+  hint:'3번은 2분이 더 들지만 다음 검문소에서 군인의 신뢰를 얻는 데 도움이 된다. 군인을 설득하면 오토바이를 빌릴 수 있다.',
+  choices:[
+    {t:'건물 사이 안전한 통로로 이동한다',d:'느리지만 안전하다.',time:12,go:'sc12',res:'건물 사이를 누비며 검문소 앞까지 왔다.'},
+    {t:'큰 도로로 빠르게 돌파한다',d:'시간 단축, 체력 감소.',time:6,hp:-15,go:'sc12',res:'파편이 팔을 스쳤다. 그래도 빨랐다.'},
+    {t:'시민에게 가장 가까운 경로를 물어본다',d:'현지인의 지혜.',time:8,trust:1,go:'sc12',res:'"검문소 군인들 의외로 착해요. 사정 얘기하면 들어줘요. 증거가 있으면 더 좋고요." (군인 신뢰 +1)'}]},
+
+sc12:{n:12,ch:3,img:'s12',title:'군사 검문소',
+  lines:[['','장갑차와 방어시설로 봉쇄된 도로. 무장 군인이 권주임을 막아선다.'],['군인','민간인 통행 금지입니다! 즉시 대피하세요!'],['권주임','저 코엑스 가야 하는데요.'],['군인','지금 전쟁 중입니다!'],['권주임','저도 알아요. 근데 저 지각하면 안 된다고요.']],
+  hint:'다음 장면에서 군인 신뢰가 2 이상이면 설득에 성공해 오토바이를 얻는다. 강사 통화 기록과 UFO 사진은 각각 신뢰 +1로 계산된다.',
+  choices:[
+    {t:'AX 마스터즈 수강증을 보여준다',d:'신분을 밝힌다.',time:6,trust:1,go:'sc13',res:'군인이 수강증을 한참 들여다본다. "...AX 마스터즈?" (신뢰 +1)'},
+    {t:'군인의 안내에 따라 우회한다',d:'순순히 따른다.',time:10,trust:2,go:'sc13',res:'시키는 대로 따랐다. 우회로 끝에서 같은 군인이 다시 말을 건다. (신뢰 +2)'},
+    {t:'사정을 자세히 설명한다',d:'취준생의 절박함을 전한다.',time:6,st:-5,trust:1,go:'sc13',res:'군인이 한숨을 쉬며 무전기를 내려놓는다. (신뢰 +1)'}]},
+
+sc13:{n:13,ch:3,img:'s13',title:'출석이냐, 국가 안보냐',
+  lines:s=>[['군인','왜 목숨을 걸고 강의실에 가려는 겁니까?'],['권주임','제가 지금까지 취업 준비를 얼마나 했는데요! 이것까지 빠질 순 없어요!'],
+    ...(has(s,'강사 통화 기록')?[['','권주임이 통화 녹음을 튼다. "9시 50분까지 오세요."']]:[]),
+    ...(has(s,'UFO 사진')?[['','옥상에서 찍은 UFO 사진을 내민다. 군인의 눈빛이 달라진다.']]:[]),
+    ['군인','...'],['군인','당신... 진심이군요.'],['#',`군인 신뢰도 ${trustScore(s)} / 2`]],
+  hint:'신뢰도가 2 이상이면 1번이 가장 좋다. 부족하다면 설득은 실패하고 12분을 더 쓰게 된다. 강제 돌파는 군인을 적으로 돌린다.',
+  choices:[
+    {t:'설득한다',d:'성공 시 오토바이 열쇠와 군사 우회로 정보.',time:6,note:s=>trustScore(s)>=2?['ok','성공 예상']:['ng','신뢰 부족'],
+      act:s=>{ if(trustScore(s)>=2){ ['오토바이 열쇠','군사 우회로 정보'].forEach(i=>{if(!has(s,i))s.items.push(i)}); s.rel['군인']='우호'; return {res:'"타고 가십시오. 삼성역까지 군 우회로도 알려드리죠." 군인이 오토바이 열쇠를 건넨다.',go:'sc14'};}
+        s.t+=12; s.rel['군인']='경계'; return {res:'"마음은 알겠지만 안 됩니다. 돌아가세요." 빙 돌아가느라 12분을 더 썼다.',go:'sc14'}; }},
+    {t:'검문소를 강제로 돌파한다',d:'적대 상태, 체력 감소.',time:10,hp:-25,set:{armyHostile:1},rel:{군인:'적대'},go:'sc14',res:'바리케이드를 넘었다. 등 뒤로 "멈춰!" 소리와 경고 사격.'},
+    {t:'다른 길을 찾는다',d:'안전하지만 오래 걸린다.',time:18,go:'sc14',res:'검문소를 크게 돌아갔다. 18분이 흘렀다.'}]},
+
+sc14:{n:14,ch:3,img:'s14',title:'제3차 세계대전',
+  enter:s=>{ if(s.f.armyHostile){ s.hp=clamp(s.hp-10); s.f.chased=1; } },
+  lines:s=>[['','하늘을 전투기와 미사일이 가득 메운다. 각국 군대와 외계 함대가 정면으로 충돌한다.'],['뉴스 속보','국제 군사 충돌이 확대되면서 제3차 세계대전 발발 우려가 현실화되고 있습니다!'],['권주임','아니, 3차 대전이면 수업 좀 쉬어야 하는 거 아니야?'],['#','[AX 마스터즈 알림] 금일 교육 정상 진행'],['권주임','와... 진짜 독하다.'],...(s.f.chased?[['','검문소 군인들의 추격 사격! 파편에 맞았다. (HP -10)']]:[])],
+  hint:'우회로 정보가 있다면 3번이 가장 빠르고 안전하다. 정보 없이 3번을 고르면 헤맨다.',
+  choices:[
+    {t:'폭격이 멈추기를 기다린 뒤 이동한다',d:'숨 돌릴 틈.',time:12,st:10,go:'sc15',res:'지하 주차장에서 12분을 기다렸다. 폭격이 잦아든다.'},
+    {t:'위험을 감수하고 즉시 돌파한다',d:'시간 단축, 체력 감소.',time:4,hp:-15,go:'sc15',res:'폭발 사이를 뛰었다. 고막이 멍하다.'},
+    {t:'우회로 정보를 확인한다',d:'군 우회로가 있다면 최단 경로.',time:s=>has(s,'군사 우회로 정보')?3:8,bat:-2,note:s=>has(s,'군사 우회로 정보')?['ok','우회로 보유']:['ng','정보 없음'],go:'sc15',res:s=>has(s,'군사 우회로 정보')?'군 우회로를 따라 포화를 피해 빠져나왔다.':'지도 앱만 보다 길을 잃었다. 8분을 헤맸다.'}]},
+
+sc15:{n:15,ch:3,img:'s15',title:'삼성역을 향해 질주',
+  lines:[['*','부아아아앙!'],['권주임','좋아! 이제 조금만 가면 코엑스다!'],['','하늘에서 외계인 드론이 내려온다.'],['*','콰앙!'],['권주임','아 제발!!! 나 좀 가자!!!']],
+  hint:'도보는 27분이나 걸린다. 오토바이 열쇠나 군인과의 우호 관계가 있다면 반드시 활용하자.',
+  choices:[
+    {t:'오토바이를 이용한다',d:'드론을 뚫고 질주.',time:15,hp:-5,need:{item:'오토바이 열쇠'},go:'sc16',res:'드론 레이저를 지그재그로 피하며 삼성역 사거리에 도착했다.'},
+    {t:'도보로 이동한다',d:'체력과 스태미나 감소.',time:27,hp:-10,st:-20,go:'sc16',res:'27분을 뛰었다. 폐가 타는 것 같다.'},
+    {t:'군용 차량의 도움을 요청한다',d:'군인과 우호 관계일 때.',time:13,need:{rel:['군인','우호']},go:'sc16',res:'"타십시오!" 장갑차가 드론을 기관포로 떨어뜨리며 코엑스 앞에 멈춘다.'}]},
+
+sc16:{n:16,ch:4,img:'s16',cp:true,title:'외계인에게 점령된 코엑스',
+  lines:[['','거대한 우주선이 코엑스 상공에 떠 있다. 건물 입구는 보라색 방어막으로 봉쇄되어 있다.'],['권주임','드디어 코엑스다!'],['외계인 경비병','인간. 이곳은 제국의 지휘 본부다.'],['권주임','아니, 원래 여기 학원인데?']],
+  hint:'정문으로 가면 다음 장면에서 잠입이 불가능하다. 측면 통로를 쓰거나, 외계 신호 기록으로 방어막을 조사하면 잠입에 성공할 수 있다.',
+  choices:[
+    {t:'정문으로 진입한다',d:'정면 돌파.',time:7,set:{frontDoor:1},go:'sc17',res:'정문을 밀고 들어가자 경비병이 곧장 무기를 겨눈다.'},
+    {t:'측면 통로를 탐색한다',d:'경비가 느슨한 곳을 찾는다.',time:9,set:{sideDoor:1},go:'sc17',res:'하역장 쪽 측면 통로를 찾았다. 경비병 한 명뿐이다.'},
+    {t:'방어막의 약점을 조사한다',d:'신호 기록이 있으면 추가 정보.',time:8,go:'sc17',act:s=>{ if(has(s,'외계 신호 기록')){s.f.shieldIntel=1;return {res:'신호 기록과 대조하니 방어막과 순찰 주기가 보인다. 경비병은 40초마다 등을 돌린다.',go:'sc17'};} return {res:'방어막은 단단했다. 알아낸 것은 없다.',go:'sc17'}; }}]},
+
+sc17:{n:17,ch:4,img:'s17',title:'외계 경비병과의 전투',
+  lines:s=>[...(s.f.frontDoor?[['','정문으로 들어온 탓에 경비병이 이미 무기를 겨누고 있다.']]:[]),['외계인 경비병','신분을 밝혀라!'],['권주임','나 AX 마스터즈 수강생이다!'],['외계인 경비병','그게 무엇이지?'],['권주임','몰라?! 나도 지금 왜 여기까지 왔는지 모르겠다!']],
+  hint:'정면 전투는 보통 8분 이상 걸리지만 회복킷을 준다. 외계 전자 칩이 있다면 3번이 가장 빠르다. 잠입은 측면 통로나 방어막 정보가 있어야 성공한다.',
+  choices:[
+    {t:'정면 공격한다',d:'전투 진행. 승리 보상: 회복킷.',time:1,act:s=>({res:'안내판을 방패 삼아 돌진한다. 전투 개시!',go:startBattle(s,'b2')})},
+    {t:'숨어서 경비병을 우회한다',d:'잠입 판정.',time:5,note:s=>(s.f.sideDoor||s.f.shieldIntel)&&!s.f.frontDoor?['ok','잠입 성공 예상']:['ng','발각 위험'],
+      act:s=>{ if((s.f.sideDoor||s.f.shieldIntel)&&!s.f.frontDoor) return {res:'경비병이 등을 돌린 40초. 그림자처럼 지나갔다.',go:'sc18'};
+        s.hp=clamp(s.hp-10); return {res:'발각! 경비병의 선제공격에 HP -10. 전투 개시!',go:startBattle(s,'b2')}; }},
+    {t:'외계 전자 칩으로 경비 시스템을 교란한다',d:'칩을 단말기에 꽂는다.',time:5,need:{item:'외계 전자 칩'},go:'sc18',res:'"시스템 오류." 경비병이 경련하듯 굳어버린다. 유유히 지나갔다.'}]},
+
+sc18:{n:18,ch:4,img:'s18',title:'레이저 함정',
+  lines:[['','코엑스 복도 전체에 붉은 레이저가 거미줄처럼 설치되어 있다.'],['권주임','아니... 이걸 어떻게 지나가라는 거야?'],['방어 시스템','침입자 감지. 제거 절차를 시작합니다.'],['권주임','아 진짜 출석 한 번 하기 더럽게 힘드네.']],
+  hint:'신호 기록이 있으면 4분이면 끝난다. 소화기를 던져 분말로 레이저를 교란할 수도 있다. 관찰해서 지나가려면 스태미나 30 이상이 있어야 덜 다친다.',
+  choices:[
+    {t:'레이저 패턴을 관찰해 이동한다',d:'스태미나 30 이상이면 피해 적음.',time:8,note:s=>s.st>=30?['ok','HP -5 예상']:['ng','HP -20 예상'],
+      act:s=>{ const d=s.st>=30?5:20; s.hp=clamp(s.hp-d); s.st=clamp(s.st-10); return {res:d===5?'패턴을 읽고 몸을 비틀어 통과했다. 팔꿈치만 살짝 그었다.':'다리가 풀려 레이저에 여러 번 스쳤다.',go:'sc19'}; }},
+    {t:'외계 신호 기록으로 시스템을 해제한다',d:'같은 주파수로 해제 신호.',time:4,need:{item:'외계 신호 기록'},go:'sc19',res:'"신호 확인. 방어 해제." 레이저가 일제히 꺼진다.'},
+    {t:'장비를 던져 레이저를 교란한다',d:'소화기를 던진다.',time:5,need:{item:'소화기'},rm:['소화기'],go:'sc19',res:'소화기가 터지며 분말 구름이 레이저를 산란시킨다. 그 틈에 통과했다.'}]},
+
+sc19:{n:19,ch:4,img:'s19',title:'외계인의 중앙 제어실',
+  lines:[['','대형 홀로그램과 외계 문자로 가득 찬 지휘 장치.'],['','홀로그램 기록을 훑던 권주임은 깨닫는다. 이번 공격은 단순한 침공이 아니라, 전 세계 통신과 시간 시스템을 교란해 인류의 방어 체계를 무너뜨리는 작전이었다.'],['','지구를 구하려면 이 지휘 장치를 정지시켜야 한다.'],['권주임','잠깐... 이걸 끄면 전쟁도 끝나는 거야?'],['권주임','그러면 지하철도 다시 다니는 거 아니야?!'],['권주임','진작 알았으면 이거부터 껐지!']],
+  hint:'제대로 해제하면(퍼즐 정답 또는 칩) 지도자의 방어막이 약해져 보스 체력이 120이 된다. 강제로 파괴하면 다치고 보스 체력은 150이다.',
+  choices:[
+    {t:'홀로그램의 규칙을 분석해 해제한다',d:'퍼즐에 도전한다.',time:4,go:'sc19p',res:'홀로그램을 손가락으로 넘기자 도형이 나열된다.'},
+    {t:'외계 전자 칩으로 장치에 접근한다',d:'관리자 권한 탈취.',time:4,need:{item:'외계 전자 칩'},set:{controlClean:1},go:'sc20',res:'"관리자 인증." 지휘 장치가 멈추고 지도자의 위치가 표시된다. 보스 방어막 약화!'},
+    {t:'강제로 장치를 파괴한다',d:'시스템 불안정으로 위험 증가.',time:6,hp:-20,set:{controlForced:1},go:'sc20',res:'콘솔을 걷어찼다. 폭발과 함께 장치가 꺼졌지만 파편에 맞았다.'}]},
+
+sc19p:{n:19,ch:4,img:'s19',title:'홀로그램 해제 코드',
+  lines:[['#','[홀로그램] 해제 순서를 완성하라'],['#','▲ 삼각형  →  ■ 사각형  →  ⬟ 오각형  →  ⬢ 육각형  →  ?'],['권주임','규칙만 찾으면 된다...']],
+  hint:'각 도형의 꼭짓점 개수를 세어 보자.',
+  choices:[
+    {t:'● 원',d:'모서리가 없는 완전한 도형.',time:6,hp:-10,set:{controlForced:1},go:'sc20',res:'경고음! 시스템이 전류로 반격한다. 수동으로 겨우 장치를 껐지만 방어막은 그대로다.'},
+    {t:'칠각형',d:'꼭짓점 일곱 개.',time:5,set:{controlClean:1},go:'sc20',res:'"해제 승인." 홀로그램이 꺼지고 지도자의 위치가 드러난다. 보스 방어막 약화!'},
+    {t:'▲ 삼각형',d:'처음으로 돌아가는 순환.',time:6,hp:-10,set:{controlForced:1},go:'sc20',res:'오답. 홀로그램이 붉게 변하며 손을 태운다. 결국 콘솔을 뜯어 장치를 껐다.'}]},
+
+sc20:{n:20,ch:4,img:'s20',cp:true,title:'외계인 지도자 등장',
+  lines:s=>[['외계인 지도자','어리석은 인간이여. 지구는 이제 우리 것이다.'],['권주임','야. 땅 따먹기는 나중에 하고 나 좀 보내주면 안 되냐?'],['외계인 지도자','감히 나에게 명령하는가?'],['권주임','나 지금 수업 들어가야 한다고!'],['외계인 지도자','이 행성의 운명을 걸고 싸워라!'],['권주임','너 진짜 사람 잘못 건드렸다.'],['#',s.f.controlClean?'지휘 장치 해제 효과: 지도자의 방어막 약화 · 체력 120':'지휘 장치 강제 파괴: 지도자의 방어막 유지 · 체력 150']],
+  hint:'약점을 알고 싸우면 전투가 훨씬 짧다. 지하철 외계인 승객에게 이미 들었다면 관찰은 건너뛰어도 된다. 강사 통화 기록이 있다면 3번을 시도해 보자.',
+  choices:[
+    {t:'지도자에게 선제공격한다',d:'먼저 20의 피해를 준다.',time:2,act:s=>({res:'기습! 지도자에게 20의 피해. 전투 개시!',go:startBattle(s,'b3',{pre:20})})},
+    {t:'지도자의 약점을 관찰한다',d:'약점 공격을 연다.',time:4,act:s=>{s.f.bossWeak=1;return {res:has(s,'지도자 약점 정보')?'외계인 승객의 말이 맞다. 이마의 보석이 깜빡일 때마다 갑옷 전체가 흔들린다.':'관찰 결과: 이마의 보석. 저기가 약점이다! 약점 공격 가능.',go:startBattle(s,'b3')};}},
+    {t:'마지막으로 통행을 요구한다',d:'대화로 해결해 본다.',time:2,note:s=>has(s,'강사 통화 기록')?['ok','통화 기록 보유']:null,
+      act:s=>{ if(has(s,'강사 통화 기록')) return {res:'권주임이 통화 녹음을 튼다. "9시 50분까지 오세요." 지도자가 움찔한다. "...이 행성에는 나보다 무서운 존재가 있군." 정신적 충격 25!',go:startBattle(s,'b3',{pre:25})};
+        s.hp=clamp(s.hp-15); return {res:'"통행료는 네 목숨이다!" 지도자의 선제공격에 HP -15.',go:startBattle(s,'b3')}; }}]},
+
+sc22:{n:22,ch:5,img:'s22',cp:true,title:'세계를 구한 남자',
+  lines:s=>[['뉴스 속보','미지의 민간인이 외계인 지도자를 격파했습니다! 지구가 구원받았습니다!'],['권주임','하... 드디어 끝났네.'],['','스마트폰 시계를 확인한다. '+fmt(s.t)+'.'],['권주임','잠깐, 나 아직 4층 안 갔잖아?!']],
+  hint:'남은 시간을 확인하자. 배터리가 거의 없다면 2번에서 보조배터리를 챙겨야 QR 출석이 가능하다.',
+  choices:[
+    {t:'즉시 강의실로 이동한다',d:'세레머니는 출석 후에.',time:2,go:'sc23',res:'잔해를 넘어 엘리베이터 홀로 달린다.'},
+    {t:'주변 회복 아이템을 수집한다',d:'회복킷과 보조배터리.',time:6,add:['회복킷','보조배터리'],go:'sc23',res:'외계 보급 상자에서 회복킷과 지구산 보조배터리를 찾았다.'},
+    {t:'시민들의 환호에 응답한다',d:'영웅의 순간.',time:5,st:15,set:{celebrated:1},go:'sc23',res:'창밖 시민들에게 손을 흔들었다. 사기 충전! 스태미나 +15.'}]},
+
+sc23:{n:23,ch:5,img:'s23',title:'엘리베이터 고장',
+  lines:[['*','띵... 삐빅... 삐빅...'],['권주임','4층! 4층! 제발!'],['안내 방송','현재 엘리베이터가 운행 중단되었습니다.'],['권주임','아... 진짜 이 세상이 나한테 왜 이러냐.']],
+  hint:'오늘 엘리베이터는 믿을 수 없다. 안내 NPC가 알려주는 지름길은 다음 계단을 덜 힘들게 만든다.',
+  choices:[
+    {t:'계단으로 이동한다',d:'역시 두 다리.',time:3,go:'sc24',res:'비상계단 문을 박차고 들어간다.'},
+    {t:'엘리베이터를 복구하려 한다',d:'AX 마스터즈의 문제 해결력.',time:10,go:'sc24',res:'10분 동안 패널을 만졌다. 엘리베이터는 지하 3층으로 내려갔다. 결국 계단이다.'},
+    {t:'안내 NPC에게 다른 경로를 묻는다',d:'코엑스 지리에 밝은 사람.',time:4,set:{shortcut:1},go:'sc24',res:'"B구역 비상계단은 강의실 바로 앞으로 이어져요!" 지름길을 알았다.'}]},
+
+sc24:{n:24,ch:5,img:'s24',title:'운명의 4층 계단',
+  lines:s=>[['*','헉... 헉... 타다닥!'],['권주임','1층...'],['권주임','2층...'],['권주임','내가... 이러려고...'],['권주임','3층...'],['권주임','AX 마스터즈를 신청했나...'],...(s.f.shortcut?[['#','B구역 지름길: 계단이 짧다']]:[])],
+  hint:'스태미나가 부족한 채로 질주하면 체력이 깎인다. 에너지바나 회복킷이 있다면 3번이 안전하다.',
+  choices:[
+    {t:'마지막 힘을 짜내 뛰어 올라간다',d:'스태미나 소모. 부족하면 체력 감소.',time:s=>s.f.shortcut?5:7,note:s=>{const need=s.f.shortcut?10:20;return s.st>=need?['ok',`ST -${need}`]:['ng','스태미나 부족 · HP -15'];},
+      act:s=>{const need=s.f.shortcut?10:20; if(s.st>=need){s.st-=need;return {res:'"4층!!!" 계단 끝에 강의실 복도가 보인다.',go:'sc25'};} s.st=0; s.hp=clamp(s.hp-15); return {res:'다리가 풀려 두 번 넘어졌다. 기어서라도 4층!',go:'sc25'};}},
+    {t:'잠시 숨을 고른다',d:'스태미나 회복, 시간 추가 소모.',time:10,st:20,go:'sc25',res:'벽에 기대 숨을 골랐다. 그리고 다시 올라 4층에 도착했다.'},
+    {t:'에너지바나 회복 아이템을 사용한다',d:'먹으면서 오른다.',time:7,need:{any:['에너지바','회복킷']},
+      act:s=>{const it=has(s,'에너지바')?'에너지바':'회복킷';const u=ITEMS[it].use;if(u.hp)s.hp=clamp(s.hp+u.hp);if(u.st)s.st=clamp(s.st+u.st);s.items=s.items.filter(x=>x!==it);return {res:`${it}를 입에 물고 올랐다. 힘이 솟는다!`,go:'sc25'};}}]},
+
+sc25:{n:25,ch:5,img:'s25',title:'AX 마스터즈 강의실 도착',
+  lines:s=>[['','복도 끝, 402호 AX 마스터즈 강의실 문.'],['권주임','헉... 헉...'],['권주임','도착... 했다...'],['강사','권주임, 어서 오세요.'],['권주임','저... 지각... 아니죠?'],['#',`현재 시각 ${fmt(s.t)} · 출석 마감 09:50 · 배터리 ${s.bat}%`]],
+  hint:'출석은 처리가 끝난 시각으로 판정된다. QR이 가장 빠르다. 스마트폰이 꺼졌다면 강사에게 직접 요청하자.',
+  choices:[
+    {t:'스마트폰으로 출석 QR코드를 인식한다',d:'삑.',time:1,need:{bat:1},go:'END'},
+    {t:'강사에게 직접 출석을 요청한다',d:'스마트폰이 꺼졌을 때.',time:2,need:{dead:true},go:'END'},
+    {t:'강의실 문을 열고 들어간다',d:'일단 들어가고 본다. 강사가 수동으로 처리한다.',time:4,go:'END'}]}
+};
+
+/* ================= STATE ================= */
+const fresh=()=>({scene:'title',t:START,hp:100,st:80,bat:38,items:['스마트폰','지갑','교통카드','AX 마스터즈 수강증'],f:{},trust:0,
+  rel:{'엄마':'보통','강사':'보통','군인':'경계','외계인 승객':'모름'},hints:{},log:[],res:null,moves:0,battle:null,cp:null,retries:0,ending:null,showHint:false,defeatAt:null,li:0,focus:0,showInfo:false,showHelp:false});
+let S=fresh();
+const copy=o=>JSON.parse(JSON.stringify(o));
+
+function curScene(s){ if(s.scene==='BATTLE'){const d=BATTLES[s.battle.id];return {n:d.n,ch:d.n>=20?4:d.n>=16?4:2,img:d.img,title:`${d.name}과의 전투`,battle:true};} return SC[s.scene]; }
+function needOK(s,c){
+  const n=c.need; if(!n) return [true,''];
+  if(n.st!=null&&s.st<n.st) return [false,`스태미나 ${n.st} 필요`];
+  if(n.item&&!has(s,n.item)) return [false,`필요: ${n.item}`];
+  if(n.any&&!n.any.some(i=>has(s,i))) return [false,`필요: ${n.any.join(' 또는 ')}`];
+  if(n.rel&&s.rel[n.rel[0]]!==n.rel[1]) return [false,`${n.rel[0]} ${n.rel[1]} 관계 필요`];
+  if(n.bat!=null&&s.bat<n.bat) return [false,'배터리 없음'];
+  if(n.dead&&s.bat>0) return [false,'스마트폰이 켜져 있음'];
+  if(n.custom===false) return [false,n.label];
+  return [true,n.st!=null?`ST ${n.st}`:n.item?n.item:n.any?n.any.join('/'):n.rel?`${n.rel[0]} 우호`:n.dead?'폰 꺼짐':n.custom?'약점 파악':''];
+}
+const cost=(s,c)=>{const t=R(c.time,s)||0;return t>0?Math.max(1,Math.ceil(t*(instinct(s)?0.85:1))):0;};
+
+let HIST=[];
+function pushHist(){ const snap=copy(S); HIST.push(snap); if(HIST.length>60) HIST.shift(); }
+function canGoBack(){ return S.showHint||S.showInfo||S.li>0||HIST.length>0; }
+function goBack(){
+  finishTyping();
+  if(S.showHint||S.showInfo){ S.showHint=false; S.showInfo=false; render(false); return; }
+  const n=getLines(S).length;
+  if(S.li>0 && S.scene!=='DEFEAT' && S.scene!=='END'){ S.li=Math.min(S.li,n)-1; render(false); return; }   // 한 줄 전 대사 (선택지 화면이면 마지막 대사)
+  if(!HIST.length) return;                                                    // 첫 장면 첫 대사: 더 갈 곳 없음
+  const prev=HIST.pop(), cp=S.cp, hints=S.hints;                              // 직전 단계(이전 장면의 선택지 화면)
+  S=prev; S.hints=Object.assign({},prev.hints,hints); if(!S.cp&&cp) S.cp=cp;
+  S.showHint=false; S.showInfo=false;
+  S.li=getLines(S).length; S.focus=firstEnabled(S);
+  render(true);
+}
+function choose(c){
+  pushHist();
+  const s=S;
+  const before={t:s.t,hp:s.hp,st:s.st,bat:s.bat,items:[...s.items]};
+  const title=R(c.t,s);
+  s.t+=cost(s,c);
+  if(c.hp) s.hp=clamp(s.hp+c.hp);
+  if(c.st) s.st=clamp(s.st+c.st);
+  if(c.bat) s.bat=clamp(s.bat+c.bat);
+  if(c.trust) s.trust+=c.trust;
+  (c.add||[]).forEach(i=>{if(!has(s,i))s.items.push(i)});
+  (c.rm||[]).forEach(i=>{s.items=s.items.filter(x=>x!==i)});
+  if(c.set) Object.assign(s.f,c.set);
+  if(c.rel) Object.assign(s.rel,c.rel);
+  let res=R(c.res,s), go=c.go;
+  if(c.act){const o=c.act(s);res=o.res;go=o.go;}
+  s.moves++;
+  s.log.push([fmt(s.t),title]);
+  s.res={title,text:res||'',delta:diff(before,s)};
+  goTo(R(go,s));
+}
+function diff(a,s){
+  const o=[];
+  if(s.t-a.t) o.push(['neg',`+${s.t-a.t}분`]);
+  if(s.hp!==a.hp) o.push([s.hp>a.hp?'pos':'neg',`HP ${s.hp>a.hp?'+':''}${s.hp-a.hp}`]);
+  if(s.st!==a.st) o.push([s.st>a.st?'pos':'neg',`ST ${s.st>a.st?'+':''}${s.st-a.st}`]);
+  if(s.bat!==a.bat) o.push([s.bat>a.bat?'pos':'neg',`배터리 ${s.bat>a.bat?'+':''}${s.bat-a.bat}%`]);
+  s.items.filter(i=>!a.items.includes(i)).forEach(i=>o.push(['item',`획득: ${i}`]));
+  a.items.filter(i=>!s.items.includes(i)).forEach(i=>o.push(['neg',`소모: ${i}`]));
+  return o;
+}
+function goTo(id){
+  const s=S; s.showHint=false; s.showInfo=false; s.li=0; s.focus=0;
+  if(s.hp<=0){ s.defeatAt=s.scene==='BATTLE'?BATTLES[s.battle.id].img:(SC[s.scene]?.img||'s09'); s.battle=null; s.scene='DEFEAT'; return render(true); }
+  if(id==='END'){ s.ending=s.t<=DEADLINE?'win':'sad'; s.scene='END'; return render(true); }
+  const changed=id!==s.scene && id!=='BATTLE' && !(s.scene==='BATTLE'&&false);
+  if(changed && id!=='sc01') s.bat=Math.max(0,s.bat-1);
+  s.scene=id;
+  const sc=SC[id];
+  if(sc&&changed&&sc.enter) sc.enter(s);
+  if(s.hp<=0){ s.defeatAt=sc?.img||'s09'; s.scene='DEFEAT'; return render(true); }
+  if(sc&&sc.cp&&changed){ const snap=copy(s); delete snap.cp; s.cp=snap; }
+  render(true);
+}
+function useItem(name){
+  const s=S,u=ITEMS[name]?.use; if(!u) return;
+  pushHist();
+  const before={t:s.t,hp:s.hp,st:s.st,bat:s.bat,items:[...s.items]};
+  if(u.hp) s.hp=clamp(s.hp+u.hp); if(u.st) s.st=clamp(s.st+u.st); if(u.bat) s.bat=clamp(s.bat+u.bat);
+  s.items=s.items.filter(i=>i!==name); s.t+=2;
+  s.log.push([fmt(s.t),`${name} 사용`]);
+  s.li=0; s.showInfo=false;
+  s.res={title:`${name} 사용`,text:name==='보조배터리'?'보조배터리를 꽂았다. 배터리 막대가 차오른다.':'우걱우걱. 힘이 난다.',delta:diff(before,s)};
+  render(false);
+}
+
+/* ================= RENDER ================= */
+const app=document.getElementById('app');
+const WHO={'권주임':'me','엄마':'mom','강사':'teacher','외계인':'alien','외계 생명체':'alien','외계인 경비병':'alien','외계인 지도자':'alien','방어 시스템':'alien','군인':'army'};
+function danger(t){
+  if(t<480) return ['경계','서울 상공 UFO 다수 출현 · 시민 외출 자제 권고'];
+  if(t<515) return ['심각','지하철 2호선 전력 장애 · 강남권 정전'];
+  if(t<550) return ['교전','북한군 작전 개시 · 외계인 통신 교란 확대'];
+  return ['세계대전','제3차 세계대전 발발 · 코엑스 외계 지휘 본부 확인'];
+}
+function hud(s){
+  const left=DEADLINE-s.t, sc=curScene(s)||{};
+  const st=s.hp<=25?'위독':s.hp<=60?'부상':'정상 상태';
+  const bar=(l,v,c,x='')=>`<div class="bar"><span>${l}</span><div class="track"><div class="fill" style="width:${v}%;background:${c}"></div></div><span class="num">${v}${x}</span></div>`;
+  return `<div class="hud"><div class="hud-in">
+    <div class="clock"><span class="now">${fmt(s.t)}</span><span class="left">${left>=0?`출석까지 <b>${left}</b>분`:`<b style="color:var(--alarm)">${-left}분 지각</b>`}</span></div>
+    <div class="bars">${bar('HP',s.hp,'var(--hp)')}${bar('ST',s.st,'var(--st)')}${bar('배터리',s.bat,'var(--bat)','%')}</div>
+    <div class="chips">${sc.n?`<span class="chip">SCENE ${String(sc.n).padStart(2,'0')} / ${TOTAL}</span>`:''}<span class="chip ${s.hp<=60?'warn':''}">${st}</span><span class="chip warn">서울 ${danger(s.t)[0]}</span>${instinct(s)&&!s.ending?'<span class="chip hot">출근 본능 발동</span>':''}${SC[s.scene]||s.scene==='BATTLE'?'<button class="infobtn" data-info>정보 · 관계 · 기록</button>':''}</div>
+  </div></div>`;
+}
+function lineHTML([w,t]){
+  if(w==='') return `<p>${esc(t)}</p>`;
+  if(w==='*') return `<p class="ln-sfx">${esc(t)}</p>`;
+  if(w==='#') return `<p class="ln-sys">${esc(t)}</p>`;
+  if(w==='!') return `<div class="alert"><div class="ah">⚠ 긴급재난문자</div><div class="ab">${esc(t)}</div></div>`;
+  if(w==='뉴스 속보'||w==='안내 방송') return `<div class="ln-news"><b>${esc(w)}</b>${esc(t)}</div>`;
+  return `<div class="ln-say"><span class="who ${WHO[w]||''}">${esc(w)}</span><p>${esc(t)}</p></div>`;
+}
+const RELC=v=>['우호','흐뭇','걱정'].includes(v)?'r-good':['적대','서운','냉정'].includes(v)?'r-bad':'r-mid';
+
+function drawer(s){
+  const canUse=!!SC[s.scene];
+  const inv=s.items.map(i=>`<li><div>${esc(i)}<small>${esc(ITEMS[i]?.d||'')}</small></div>${ITEMS[i]?.use&&canUse?`<button class="use" data-use="${esc(i)}">사용 · 2분</button>`:''}</li>`).join('');
+  const rel=Object.entries(s.rel).map(([k,v])=>`<span>${esc(k)}</span><span class="${RELC(v)}">${esc(v)}</span>`).join('');
+  const lg=s.log.length?s.log.slice().reverse().map(([t,x])=>`<li><span>${t}</span>${esc(x)}</li>`).join(''):'<li class="empty">첫 선택을 기다리는 중</li>';
+  return `<button class="backdrop" data-info aria-label="닫기"></button><aside class="drawer" aria-label="소지품 기록">
+    <div class="dh"><b>소지품 기록</b><button class="infobtn" data-info>닫기</button></div>
+    <div class="box"><h4>소지품</h4><ul class="inv">${inv}</ul></div>
+    <div class="box"><h4>NPC 관계 · 군인 신뢰 ${trustScore(s)}</h4><div class="rel">${rel}</div></div>
+    <div class="box prof"><h4>프로필</h4><span class="nm">권주임 · 28세 취준생</span>
+      <span class="ab">특수 능력 <b>출근 본능</b> · 남은 시간 40분 이하에서 이동 15% 단축, 공격력 ×1.5</span>
+      <span class="ab">필살기 <b>"내가 오늘 수업 빠지면 네가 책임질 거야?!"</b> · ST 30</span></div>
+    <div class="box"><h4>행동 기록</h4><ul class="log">${lg}</ul></div>
+    <button class="restart" data-restart>처음부터 다시 하기</button>
+  </aside>`;
+}
+function choiceList(s){ return s.scene==='BATTLE'?battleChoices(s):R(SC[s.scene].choices,s).filter(c=>!(c.hide&&c.hide(s))); }
+function battleHint(s){
+  const b=s.battle,d=BATTLES[b.id];
+  if(d.boss) return '보스는 체력에 따라 패턴이 바뀐다. 3페이즈의 "레이저 충전"을 보면 다음 턴에 방어하자. 레이저를 막으면 피해가 0이고 약점이 드러난다. 필살기는 40의 피해와 함께 반격을 막는다. 위험하면 아이템을 써서 버티자.';
+  return `"다음 공격"을 보고 행동을 고르자. 약점(${d.weakName})을 알면 약점 공격이 가장 효율적이다. 스태미나 30 이상이면 필살기로 한 번에 끝낼 수 있다.`;
+}
+
+/* ---------- visual-novel screen ---------- */
+function getLines(s){
+  const out=[];
+  if(s.res&&(s.res.text||s.res.delta.length)) out.push({kind:'result',who:s.res.title,text:s.res.text,delta:s.res.delta});
+  if(s.scene==='BATTLE'){ const b=s.battle,d=BATTLES[b.id]; if(b.turn===0) d.intro.forEach(x=>{const [w,t]=Array.isArray(x)?x:['',x];out.push({who:w,text:t});}); }
+  else R(SC[s.scene].lines,s).forEach(([w,t])=>out.push({who:w,text:t}));
+  return out;
+}
+const enabled=(s,c)=>{const [ok]=needOK(s,c);return ok&&!(c.bat<0&&s.bat<=0);};
+function firstEnabled(s){const l=choiceList(s);const i=l.findIndex(c=>enabled(s,c));return i<0?0:i;}
+const PLATE={me:'p-me',mom:'p-mom',teacher:'p-teacher',alien:'p-alien',army:'p-army'};
+function chips(arr){return arr.map(([k,v])=>`<span class="d ${k}">${esc(v)}</span>`).join('');}
+function choiceMeta(s,c){
+  const m=[`<span class="tm">${cost(s,c)}분</span>`];
+  if(c.hp) m.push(`<span>HP ${c.hp>0?'+':''}${c.hp}</span>`);
+  if(c.st) m.push(`<span>ST ${c.st>0?'+':''}${c.st}</span>`);
+  if(c.bat) m.push(`<span>배터리 ${c.bat}%</span>`);
+  const [ok,why]=needOK(s,c); if(c.need) m.push(`<span class="${ok?'req':'ng'}">${esc(why)}</span>`);
+  const nt=c.note&&R(c.note,s); if(nt) m.push(`<span class="${nt[0]}">${esc(nt[1])}</span>`);
+  if(c.bat<0&&s.bat<=0) m.push('<span class="ng">배터리 없음</span>');
+  return m.join('');
+}
+let typing=null;
+function vnHTML(s){
+  const sc=curScene(s), ch=CH[sc.ch], lines=getLines(s), list=choiceList(s);
+  const showChoices=s.li>=lines.length;
+  const left=DEADLINE-s.t;
+  const bar=(l,v,c,x='')=>`<div class="mb"><span>${l}</span><i><b style="width:${v}%;background:${c}"></b></i><em>${v}${x}</em></div>`;
+  // dialogue box content
+  let plate='',body='',cls='';
+  if(s.showHint){ plate=`<span class="plate p-hint">HINT</span>`; body=`<p class="dlg-text" id="dlgText">${esc(s.scene==='BATTLE'?battleHint(s):sc.hint)}</p>`; cls='is-hint'; }
+  else if(showChoices){
+    const c=list[s.focus]||list[0];
+    plate=`<span class="plate p-sel">선택 ${String((s.focus||0)+1).padStart(2,'0')}</span>`;
+    body=`<p class="dlg-text">${esc(c?(c.d||R(c.t,s)):'')}</p><div class="dlg-meta">${c?choiceMeta(s,c):''}</div>`;
+  } else {
+    const L=lines[s.li];
+    if(L.kind==='result'){ plate=`<span class="plate p-res">직전 행동 · ${esc(L.who)}</span>`; body=`<p class="dlg-text" id="dlgText" data-full="${esc(L.text)}">${esc(L.text)}</p><div class="deltas">${chips(L.delta)}</div>`; }
+    else if(L.who==='!'){ plate=`<span class="plate p-alert">⚠ 긴급재난문자</span>`; body=`<p class="dlg-text" id="dlgText" data-full="${esc(L.text)}">${esc(L.text)}</p>`; cls='is-alert'; }
+    else if(L.who==='*'){ body=`<p class="dlg-text sfx" id="dlgText" data-full="${esc(L.text)}">${esc(L.text)}</p>`; }
+    else if(L.who==='#'){ plate=`<span class="plate p-sys">SYSTEM</span>`; body=`<p class="dlg-text sys" id="dlgText" data-full="${esc(L.text)}">${esc(L.text)}</p>`; }
+    else if(L.who===''){ body=`<p class="dlg-text narr" id="dlgText" data-full="${esc(L.text)}">${esc(L.text)}</p>`; }
+    else { plate=`<span class="plate ${PLATE[WHO[L.who]]||(L.who==='뉴스 속보'||L.who==='안내 방송'?'p-news':'p-npc')}">${esc(L.who)}</span>`; body=`<p class="dlg-text" id="dlgText" data-full="${esc(L.text)}">${esc(L.text)}</p>`; }
+  }
+  const curL=!showChoices&&!s.showHint?lines[s.li]:null;
+  const burst=curL&&curL.who==='*'?`<div class="burst" aria-hidden="true"><span>${esc(curL.text)}</span></div>`:'';
+  // battle bar
+  let ebar='';
+  if(s.scene==='BATTLE'){ const b=s.battle,d=BATTLES[b.id];
+    ebar=`<div class="ebar"><div class="en"><b>${esc(d.name)}</b>${d.boss?`<span class="ph">PHASE ${b.phase}</span>`:''}<span class="hpn">${Math.max(0,b.hp)} / ${b.max}</span></div><i><b style="width:${Math.max(0,b.hp)/b.max*100}%"></b></i><div class="nx">다음 공격 <strong>${esc(b.nextMove.name)}${b.nextMove.dmg?` · ${b.nextMove.dmg}`:''}</strong>${b.exposed?' <span class="exp">약점 노출!</span>':''}</div></div>`; }
+  const menu=showChoices&&!s.showHint?`<div class="menu" role="menu">
+      <button class="chev up" data-mv="-1" aria-label="위로">︿</button>
+      <div class="mq">${s.scene==='BATTLE'?'행동을 선택하라':'권주임은 어떻게 행동할 것인가?'}</div>
+      ${list.map((c,i)=>`<button class="mbar ${i===s.focus?'focus':''} ${c.special?'special':''}" role="menuitem" data-i="${i}" ${enabled(s,c)?'':'disabled'}><span class="no">${String(i+1).padStart(2,'0')}</span><span class="lb">${esc(R(c.t,s))}</span><span class="tm">${cost(s,c)}분</span></button>`).join('')}
+      <button class="chev dn" data-mv="1" aria-label="아래로">﹀</button>
+    </div>`:'';
+  return `<div class="vn ${showChoices&&!s.showHint?'choosing':''}">
+    <div class="stagebox ${burst?'shake':''}">
+      <img class="bg" src="${IMG(sc.img)}" alt="${esc(sc.title)}">
+      <div class="topbar">
+        <div class="plaque"><span class="pk">CHAPTER ${sc.ch} · SCENE ${String(sc.n).padStart(2,'0')}</span><b>${esc(sc.title)}</b><span class="pl">${esc(ch[0])} · 서울 ${danger(s.t)[0]}</span></div>
+        <div class="hudr">
+          <div class="cap2"><span class="chv">《</span><span class="clk">${fmt(s.t)}</span><span class="lft">${left>=0?`출석까지 ${left}분`:`${-left}분 지각`}</span><span class="chv">》</span></div>
+          <div class="mbars">${bar('HP',s.hp,'var(--hp)')}${bar('ST',s.st,'var(--st)')}${bar('BAT',s.bat,'var(--bat)','%')}</div>
+          <div class="tools">${instinct(s)?'<span class="hot2">출근 본능</span>':''}<button class="tb backbtn" data-back title="이전 대사·단계로 (Backspace)" ${canGoBack()?'':'disabled'}>◀ 뒤로</button><button class="tb" data-hint>${s.showHint?'힌트 닫기':'힌트'}</button><button class="tb" data-info>소지품 기록</button></div>
+        </div>
+      </div>
+      ${ebar}
+      ${burst}
+      ${menu}
+      <div class="tabs"><span class="tab tl">현재 위치 · ${esc(ch[1])}</span><span class="tab tr">${showChoices?`${list.length}개 행동`:`대사 ${Math.min(s.li+1,lines.length)} / ${lines.length}`}</span></div>
+      <div class="dlg ${cls}" ${showChoices||s.showHint?'':'data-adv'} role="${showChoices?'region':'button'}" tabindex="0" aria-label="대화창">
+        ${plate}
+        <div class="dlg-body">${body}</div>
+        <div class="dlg-foot">${showChoices||s.showHint?(showChoices&&!s.showHint?'<button class="tb sm" data-replay>대사 다시 보기</button>':''):'<button class="tb sm" data-skip>건너뛰기 ≫</button><span class="nextarrow">▼</span>'}</div>
+      </div>
+    </div>
+    ${s.showInfo?drawer(s):''}
+  </div>`;
+}
+function titleHTML(){
+  return `<div class="cover">
+    <img class="cv-bg" src="${IMG('cover')}" alt="" aria-hidden="true">
+    <img class="cv-img" src="${IMG('cover')}" alt="알람 시계 7시 30분, 긴급재난문자를 보며 놀란 권주임과 창밖의 UFO. CHAPTER 1 아침의 출근전쟁">
+    <div class="cv-ui">
+      <h1 class="sr">지각을 해서는 안 돼!</h1>
+      <button class="cv-start" data-start autofocus><span class="no">▶</span><span>게임 시작</span></button>
+      <button class="cv-help" data-help>게임 방법</button>
+      <span class="cv-press">Enter 또는 Space를 눌러 시작</span>
+    </div>
+    ${S.showHelp?`<button class="backdrop" data-help aria-label="닫기"></button><div class="helpbox" role="dialog" aria-label="게임 방법">
+      <div class="dh"><b>지각을 해서는 안 돼!</b><button class="infobtn" data-help>닫기</button></div>
+      <p class="lede">외계인의 공격, 북한의 침공, 제3차 세계대전. 그래도 권주임(28)은 오전 9시 50분까지 코엑스 4층 AX 마스터즈 강의실에 출석해야 한다.</p>
+      <div class="rules">
+        <div class="rule"><b>제한 시간 140분</b>07:30 기상, 09:50 출석 마감. 모든 행동은 시간을 쓴다.</div>
+        <div class="rule"><b>대사 넘기기</b>대화창 클릭 또는 Space·Enter. 건너뛰기로 바로 선택지.</div>
+        <div class="rule"><b>선택</b>↑↓와 Enter, 숫자 키, 또는 클릭. 아이템과 관계가 이후 선택지를 연다.</div>
+        <div class="rule"><b>턴제 전투</b>적의 다음 공격을 보고 공격·방어·약점·아이템·필살기를 고른다.</div>
+        <div class="rule"><b>힌트와 뒤로가기</b>H로 힌트. ◀ 뒤로 또는 Backspace로 한 줄 전 대사, 첫 대사에서는 이전 장면의 선택지로 돌아간다.</div>
+        <div class="rule"><b>체크포인트</b>체력이 0이 되면 챕터 시작 지점에서 재도전.</div>
+      </div>
+      <div class="chapters">${Object.entries(CH).map(([n,[x,y]])=>`<div><span>CHAPTER ${n}</span><b>${x}</b>${y}</div>`).join('')}</div>
+    </div>`:''}
+  </div>`;
+}
+function endingHTML(s){
+  const late=s.t-DEADLINE;
+  const E=s.ending==='win'?{cls:'win',kick:'SCENE 26 · HAPPY ENDING',stamp:'전설의 출석왕',lines:[
+      ['','강의실 안. 모두 평소처럼 컴퓨터 앞에 앉아 있다.'],['강사','권주임, 고생하셨습니다. 출석 확인됐습니다.'],['권주임','저... 제가 지구를 구하고 왔거든요...'],['강사','아, 그러셨군요.'],['권주임','...'],['강사','자, 그럼 오늘은 AI 자동화 실습을 시작하겠습니다.'],['권주임','아니, 제가 진짜 외계인을...'],['강사','권주임, 집중하세요.'],['권주임','...']],
+      final:['<span class="big ws">WORLD SAVED</span>','<span class="big ok">ATTENDANCE COMPLETE</span>','<p>오늘도 정상 출석했습니다. THE END</p>']}
+    :{cls:'sad',kick:'SCENE 27 · SAD ENDING',stamp:'지구는 구했지만 지각했다',lines:[
+      ['','강의실 바닥에 주저앉은 권주임. 강사는 출석부에 지각을 기록한다.'],['권주임','강사님... 제가 외계인 지도자를 죽을힘을 다해 물리쳤습니다...'],['강사','네, 뉴스 봤습니다.'],['권주임','근데... 지각인가요?'],['강사','네. 지각입니다.'],['권주임','저 지구를 구했는데요?'],['강사',`그래도 ${late}분 늦으셨잖아요.`],['권주임','...'],['강사','다음부터는 조금 일찍 나오세요.'],['권주임','아아아아아아아악!!!']],
+      final:['<span class="big ws">EARTH SAVED</span>','<span class="big ng">ATTENDANCE FAILED</span>','<p>당신은 세계를 구했지만 출석을 지키지 못했습니다. GAME OVER</p>']};
+  const rank=s.ending==='win'?(-late>=20?'S':-late>=8?'A':'B'):'F';
+  return `<div class="title ending ${E.cls}">
+    <div class="frame"><img src="${IMG('s26')}" alt="강의실에 들어선 권주임"></div>
+    <div><div class="kicker">${E.kick}</div><span class="stamp">${esc(E.stamp)}</span></div>
+    <div class="story">${E.lines.map(lineHTML).join('')}</div>
+    <div class="final">${E.final.join('')}</div>
+    <div class="stats">
+      <div class="stat"><small>출석 처리 시각</small><b>${fmt(s.t)}</b></div>
+      <div class="stat"><small>남은 HP</small><b>${s.hp}</b></div>
+      <div class="stat"><small>선택 횟수</small><b>${s.moves}</b></div>
+      <div class="stat"><small>힌트 사용</small><b>${Object.keys(s.hints).length}</b></div>
+      <div class="stat"><small>재도전</small><b>${s.retries}</b></div>
+      <div class="stat"><small>등급</small><b>${rank}</b></div>
+    </div>
+    <div class="btnrow"><button class="go" data-start>다른 경로로 다시 출근하기</button><button class="go ghost" data-back>◀ 직전 선택으로</button></div>
+  </div>`;
+}
+function defeatHTML(s){
+  const cp=s.cp, cpSc=cp?SC[cp.scene]:null;
+  return `<div class="title ending bad">
+    <div class="frame"><img src="${IMG(s.defeatAt||'s09')}" alt="" style="filter:grayscale(.9) brightness(.7)"></div>
+    <div><div class="kicker">DEFEAT · 체력 0</div><span class="stamp">전투 패배</span></div>
+    <div class="story">${[['',`${fmt(s.t)}. 권주임이 쓰러졌다. 의식이 흐려지는 와중에도 손가락은 출석 앱을 누르고 있다.`],['강사','(단톡방) 권주임 님 오늘 안 오시나요?']].map(lineHTML).join('')}</div>
+    <div class="btnrow">${cp?`<button class="go" data-retry>체크포인트에서 재도전 · SCENE ${String(cpSc.n).padStart(2,'0')} ${esc(cpSc.title)} (${fmt(cp.t)})</button>`:''}<button class="go ghost" data-back>◀ 직전 선택으로</button><button class="go ghost" data-start>처음부터</button></div>
+  </div>`;
+}
+
+function render(top){
+  const s=S, game=!!(SC[s.scene]||s.scene==='BATTLE');
+  document.body.classList.toggle('game',game);
+  document.body.classList.toggle('cv',s.scene==='title');
+  if(typing){clearInterval(typing);typing=null;}
+  if(s.scene==='title') app.innerHTML=titleHTML();
+  else if(s.scene==='END') app.innerHTML=`${hud(s)}<div class="wrap">${endingHTML(s)}</div>`;
+  else if(s.scene==='DEFEAT') app.innerHTML=`${hud(s)}<div class="wrap">${defeatHTML(s)}</div>`;
+  else { app.innerHTML=vnHTML(s); startTyping(); }
+  if(top) window.scrollTo(0,0);
+}
+function startTyping(){
+  const el=document.getElementById('dlgText'); if(!el||!el.dataset.full) return;
+  if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const full=el.dataset.full; let i=0; el.textContent='';
+  el.closest('.dlg')?.classList.add('typing');
+  typing=setInterval(()=>{ i+=2; el.textContent=full.slice(0,i); if(i>=full.length) finishTyping(); },24);
+}
+function finishTyping(){
+  if(!typing) return false; clearInterval(typing); typing=null;
+  const el=document.getElementById('dlgText'); if(el&&el.dataset.full) el.textContent=el.dataset.full;
+  el?.closest('.dlg')?.classList.remove('typing'); return true;
+}
+function advance(){
+  if(finishTyping()) return;
+  const n=getLines(S).length;
+  S.li=Math.min(n,S.li+1); if(S.li>=n) S.focus=firstEnabled(S);
+  render(false);
+}
+function moveFocus(d){
+  const l=choiceList(S); if(!l.length) return; let i=S.focus??0;
+  for(let k=0;k<l.length;k++){ i=(i+d+l.length)%l.length; if(enabled(S,l[i])) break; }
+  S.focus=i; render(false);
+}
+app.addEventListener('click',e=>{
+  const b=e.target.closest('button,[data-adv]'); if(!b||b.disabled) return;
+  if(b.hasAttribute('data-start')){S=fresh();HIST=[];goTo('sc01');return;}
+  if(b.hasAttribute('data-help')){S.showHelp=!S.showHelp;render(false);return;}
+  if(b.hasAttribute('data-back')){goBack();return;}
+  if(b.hasAttribute('data-restart')){S=fresh();HIST=[];render(true);return;}
+  if(b.hasAttribute('data-retry')){const cp=S.cp,r=S.retries+1,h=S.hints;S=copy(cp);S.cp=cp;S.retries=r;S.hints=h;const hb=S.hp,sb=S.st;S.hp=Math.max(S.hp,70);S.st=Math.max(S.st,50);S.li=0;S.res={title:'체크포인트에서 재도전',text:'숨을 고르고 다시 시작한다. 체크포인트 보정으로 체력 70, 스태미나 50까지 회복했다. 시간은 그대로다.',delta:[...(S.hp>hb?[['pos',`HP +${S.hp-hb}`]]:[]),...(S.st>sb?[['pos',`ST +${S.st-sb}`]]:[])]};render(true);return;}
+  if(b.hasAttribute('data-info')){S.showInfo=!S.showInfo;render(false);return;}
+  if(b.hasAttribute('data-hint')){S.showHint=!S.showHint;if(S.showHint)S.hints[S.scene]=1;render(false);return;}
+  if(b.hasAttribute('data-skip')){e.stopPropagation();S.li=getLines(S).length;S.focus=firstEnabled(S);render(false);return;}
+  if(b.hasAttribute('data-replay')){S.li=0;render(false);return;}
+  if(b.dataset.mv){moveFocus(+b.dataset.mv);return;}
+  if(b.dataset.use){useItem(b.dataset.use);return;}
+  if(b.dataset.i!=null){const c=choiceList(S)[+b.dataset.i]; if(c) choose(c); return;}
+  if(b.hasAttribute('data-adv')){advance();return;}
+});
+app.addEventListener('mouseover',e=>{
+  const b=e.target.closest('.mbar'); if(!b||b.disabled) return;
+  const i=+b.dataset.i; if(S.focus!==i){S.focus=i;const box=document.querySelector('.dlg'); if(box){ // update box only
+    const c=choiceList(S)[i]; box.querySelector('.plate').textContent=`선택 ${String(i+1).padStart(2,'0')}`;
+    box.querySelector('.dlg-body').innerHTML=`<p class="dlg-text">${esc(c.d||'')}</p><div class="dlg-meta">${choiceMeta(S,c)}</div>`;
+    document.querySelectorAll('.mbar').forEach(x=>x.classList.toggle('focus',+x.dataset.i===i)); }}
+});
+document.addEventListener('keydown',e=>{
+  if(e.metaKey||e.ctrlKey||e.altKey) return;
+  if(S.scene==='title'){ if(e.key==='Escape'&&S.showHelp){S.showHelp=false;render(false);} else if(!S.showHelp&&(e.key==='Enter'||e.key===' ')){e.preventDefault();S=fresh();HIST=[];goTo('sc01');} return; }
+  if((S.scene==='DEFEAT'||S.scene==='END')&&e.key==='Backspace'){e.preventDefault();goBack();return;}
+  if(!(SC[S.scene]||S.scene==='BATTLE')) return;
+  if(e.key==='Backspace'){e.preventDefault();goBack();return;}
+  if(e.key==='Escape'){ if(S.showInfo||S.showHint){S.showInfo=false;S.showHint=false;render(false);} return; }
+  if(S.showInfo) return;
+  if(e.key==='h'||e.key==='H'){S.showHint=!S.showHint;if(S.showHint)S.hints[S.scene]=1;render(false);return;}
+  if(e.key==='i'||e.key==='I'){S.showInfo=true;render(false);return;}
+  const choosing=S.li>=getLines(S).length&&!S.showHint;
+  if(!choosing){ if(e.key===' '||e.key==='Enter'){e.preventDefault();advance();} return; }
+  if(e.key==='ArrowDown'){e.preventDefault();moveFocus(1);return;}
+  if(e.key==='ArrowUp'){e.preventDefault();moveFocus(-1);return;}
+  if(e.key==='Enter'||e.key===' '){e.preventDefault();const c=choiceList(S)[S.focus];if(c&&enabled(S,c))choose(c);return;}
+  if(/^[1-9]$/.test(e.key)){const c=choiceList(S)[+e.key-1];if(c&&enabled(S,c))choose(c);}
+});
+function showError(msg){
+  app.innerHTML=`<div class="wrap" style="padding-block:40px"><div class="hint"><b>오류</b>게임을 불러오지 못했습니다: ${esc(msg)}</div><button class="go" style="margin-top:16px" data-start>처음부터 시작</button></div>`;
+}
+window.addEventListener('error',e=>{ try{ S=fresh(); showError(e.message||'알 수 없는 오류'); }catch(_){} });
+function start(saved){
+  try{
+    if(saved&&typeof saved==='object'&&saved.scene&&(SC[saved.scene]||saved.scene==='title'||(saved.scene==='BATTLE'&&saved.battle))){ S=Object.assign(fresh(),saved); }
+    else S=fresh();
+    render(false);
+  }catch(err){ S=fresh(); try{render(false);}catch(e2){showError(e2.message);} }
+}
+try{ window.claude?.hot?.snapshot?.(()=>copy(S)); }catch(e){}
+try{ if(window.claude?.hot?.ready) window.claude.hot.ready(d=>start(d)); else start(null); }catch(e){ start(null); }
+window.__game={SC,BATTLES,get S(){return S},choose,choiceList,goTo,fresh,needOK,set(s){S=s}};
+})();
+</script>
+
+</body>
+</html>
